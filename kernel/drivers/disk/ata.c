@@ -27,7 +27,7 @@ void ata_pio28_read(int secondary, int slave, uint32_t lba, uint16_t sector_coun
     int io_base = PRIMARY_IO_BASE;
     if(secondary) io_base = SECONDARY_IO_BASE;
     outb(io_base + ATA_DRIVE_REG, 0xE0 | (slave << 4) | ((lba >> 24) & 0x0F));
-    outb(io_base + sector_count, (unsigned char)sector_count);
+    outb(io_base + ATA_SECCOUNT_REG, (unsigned char)sector_count);
     outb(io_base + ATA_LBA_LOW_REG, (uint8_t)lba);
     outb(io_base + ATA_LBA_MID_REG, (uint8_t)(lba >> 8));
     outb(io_base + ATA_LBA_HIGH_REG, (uint8_t)(lba >> 16));
@@ -46,7 +46,7 @@ void ata_pio28_write(int secondary, int slave, uint32_t lba, uint16_t sector_cou
     int io_base = PRIMARY_IO_BASE;
     if(secondary) io_base = SECONDARY_IO_BASE;
     outb(io_base + ATA_DRIVE_REG, 0xE0 | (slave << 4) | ((lba >> 24) & 0x0F));
-    outb(io_base + sector_count, (unsigned char)sector_count);
+    outb(io_base + ATA_SECCOUNT_REG, (unsigned char)sector_count);
     outb(io_base + ATA_LBA_LOW_REG, (uint8_t)lba);
     outb(io_base + ATA_LBA_MID_REG, (uint8_t)(lba >> 8));
     outb(io_base + ATA_LBA_HIGH_REG, (uint8_t)(lba >> 16));
@@ -80,4 +80,16 @@ int ata_identify(int secondary, int slave, void* buffer){
     }
     bufferptr+=256;
     return 0;
+}
+
+void lazy_ata_read_primary(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
+    ata_pio28_read(0,0,lba,sector_count,buffer);
+}
+
+void lazy_ata_write_primary(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
+    ata_pio28_write(0,0,lba,sector_count,buffer);
+}
+
+void ata_init(uint8_t bus, uint8_t dev, uint8_t func){
+    register_disk(0,DISK_HARDDRIVE,lazy_ata_read_primary,lazy_ata_write_primary,"ATA_PIO HDD");
 }

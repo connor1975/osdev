@@ -1,6 +1,8 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
+#include <stdint.h>
+
 #define BLUE    0x000000FF
 #define GREEN   0x0000FF00
 #define RED     0x00FF0000
@@ -21,7 +23,10 @@ extern int framebuffer_pitch;
 extern void* framebuffer;
 
 void screen_init(bootinfo_t*);
-void clear_framebuffer(uint32_t colour);
-void putpixel(uint32_t colour, int x, int y);
+static inline void putpixel(uint32_t colour, int x, int y){
+    uint32_t* row = (uint32_t*)((uint8_t*)framebuffer + y * framebuffer_pitch);
+    row[x] = colour;
+}
+void render_psf_char(uint32_t fg, uint32_t bg, int pos_x, int pos_y, char c);
 
 #endif

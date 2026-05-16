@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <bootloader.h>
 #include <string.h>
+#include <kernel/screen.h>
 #include <kernel/common.h>
 
 struct vbe_mode_info* framebuffer_info;
@@ -10,18 +11,13 @@ int framebuffer_width;
 int framebuffer_height;
 int framebuffer_pitch;
 
-void clear_framebuffer(uint32_t colour){
-    cursor_x = 0;
-    cursor_y = 0;
-    uint32_t* ptr = framebuffer;
-    for(int i = 0; i < framebuffer_width * framebuffer_height; i++){
-        ptr[i] = colour;
-    }
-}
+#define PSF1_HEADER_SIZE 4
 
-void putpixel(uint32_t colour, int x, int y){
-    *((uint32_t*)framebuffer + x + (y * framebuffer_width)) = colour;
-}
+extern int _binary_font_psf_start;
+void* psf_font = &_binary_font_psf_start;
+
+int font_width;
+int font_height;
 
 void screen_init(bootinfo_t* bootinfo){
     framebuffer_info = phys_to_virt(bootinfo->framebuffer);
@@ -29,4 +25,41 @@ void screen_init(bootinfo_t* bootinfo){
     framebuffer_width = bootinfo->framebuffer->width;
     framebuffer_height = bootinfo->framebuffer->height;
     framebuffer_pitch = bootinfo->framebuffer->pitch;
+    font_width = 8;
+    font_height = 16;
+}
+
+void clear_char(uint32_t bg, int pos_x, int pos_y){
+    for(int y = 0; y < 16;  y++){
+        for(int x = 0; x < 8; x++){
+            putpixel(bg,pos_x + x, pos_y + y);
+        }
+    }
+}
+
+
+void render_psf_char(uint32_t fg, uint32_t bg, int pos_x, int pos_y, char c){
+    if(c == 0){
+        clear_char(bg,pos_x,pos_y);
+        return;
+    }
+
+    unsigned char* glpyh = psf_font + PSF1_HEADER_SIZE + (c * 16);
+    for(int y = 0; y < 16; y++){
+        for(int x = 0; x < 8; x++){
+            if(glpyh[y] & 0b10000000 >> x){
+                putpixel(fg,x + pos_x,y + pos_y);
+            } else{
+                putpixel(bg,x + pos_x,y + pos_y);
+            }
+        }
+    }
+}
+
+void render_cursor(uint32_t colour, int posx, int posy){
+    for(int x = 0; x < 8; x++){
+        for(int y = 0; y < 16; y++){
+            putpixel(colour,posx + x, posy + y);
+        }
+    }
 }

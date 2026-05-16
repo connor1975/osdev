@@ -75,6 +75,7 @@ void init_pci_devices(){
                     uint16_t class = (val2 >> 24);
 
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_AHCI) ahci_init(b,d,f);
+                    if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) ata_init(b,d,f);
                 }
             }
         }

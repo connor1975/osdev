@@ -58,6 +58,7 @@ task_t* task_create_child();
 int create_kernel_task(void* func);
 int spawn_elf(fs_node_t* file,char** argv, char** envp);
 int task_close_file(int fd);
+extern void yield();
 
 extern volatile task_t* current_task;
 extern volatile struct interrupt_frame* syscall_context;

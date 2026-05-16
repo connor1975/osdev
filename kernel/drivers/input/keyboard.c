@@ -1,6 +1,9 @@
 #include <kernel/common.h>
+#include <kernel/keyboard.h>
+#include <kernel/tty.h>
 #include <kernel/interrupts.h>
 #include <kernel/pipe.h>
+#include <kernel/tty.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -22,87 +25,53 @@ const char scanmap_shifted[128] = {
     '3', '0', '.', 0, 0, 0,   0,   0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-#define SHIFT_PRESSED 0x2a
-#define SHIFT_RELEASED 0xaa
-#define CAPS_LOCK_PRESSED 0x3a
-#define CTRL_PRESSED 0x1d
-#define CTRL_RELEASED 0x9d
-
 volatile int shifting = 0;
-int last_char;
-volatile int key_pressed = 0;
 
 #define BUFFER_SIZE 16
 
-fs_node_t* keyboard_pipe = NULL;
-
 int kbd_cur = 0;
+static int multibyte = 0;
 
-// stdin read
-uint32_t keyboard_read(void* bufferptr, uint64_t buffer_size){
-    kbd_cur = 0;
-    char* buffer = bufferptr;
-    char c;
-    int i = 0;
-    while(1){
-        if( i < buffer_size){
-            while(get_pipe_free(keyboard_pipe) == BUFFER_SIZE);
-            key_pressed = 0;
-            read_fs(keyboard_pipe,0,1,(void*)&c);
-            if(c == '\b'){
-                if(i == 0)continue;
-                i--;
-                buffer[i] = 0;
-                continue;
+void keyboard_irq_handler(struct interrupt_frame* frame){
+    irq_disable();
+    input_event_t input_event;
+    uint8_t scancode = inb(0x60);
+    if(scancode == 0xE0){
+        multibyte = 1;
+        return;
+    }
+    if(multibyte){
+        multibyte = 0;
+        input_event.ascii = 0;
+        input_event.scancode = scancode;
+        if(scancode < 0x90) // Key pressed not released
+            tty_handle_input(input_event);
+        return;
+    }
+    switch (scancode){
+        case SHIFT_PRESSED:
+        shifting = 1;
+        break;
+        case SHIFT_RELEASED:
+        shifting = 0;
+        break;
+    
+        default:
+            if(scancode < 0x60){
+                input_event.scancode = scancode;
+                char c;
+                if(shifting){
+                    c = scanmap_shifted[scancode];
+                }else{
+                    c = scanmap[scancode];
+                }
+                input_event.ascii = c;
+                tty_handle_input(input_event);
             }
-            buffer[i++] = c;
-            if(c == '\n') return i;
-            continue;
-        }
-        if(last_char == '\b'){
-            if(kbd_cur == buffer_size - 1){
-                i = kbd_cur;
-            }
-            read_fs(keyboard_pipe,0,2,NULL);
-        }
-        if(last_char == '\n') return i;
+            break;
     }
 }
 
-void keyboard_irq_handler(struct interrupt_frame* frame){
-    uint8_t scancode = inb(0x60);
-    switch(scancode){
-        case SHIFT_PRESSED:
-            shifting = !shifting;
-        break;
-        case SHIFT_RELEASED:
-            shifting = !shifting;
-        break;
-        case CAPS_LOCK_PRESSED:
-            shifting = !shifting;
-        break;
-        default: 
-            if(scancode < 0x80){
-                if(!shifting) last_char = scanmap[scancode];
-                else last_char = scanmap_shifted[scancode];
-                if(get_pipe_free(keyboard_pipe) == 0) return;
-                write_fs(keyboard_pipe,0,1,(void*)&last_char);
-                if(last_char == '\b'){
-                    if(kbd_cur > 0){
-                        kbd_cur--;
-                        putchar(last_char);
-                    }
-                }else{
-                    kbd_cur++;
-                    putchar(last_char);                
-                }
-                key_pressed = 1;
-            }
-        break;
-    }   
-}
-
 void kbd_init(){
-    keyboard_pipe = create_pipe(BUFFER_SIZE);
     register_irq_handler(1,keyboard_irq_handler);
 }

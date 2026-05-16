@@ -14,6 +14,7 @@
 #include <kernel/fs/fat.h>
 #include <kernel/rtl8169.h>
 #include <kernel/pipe.h>
+#include <kernel/tty.h>
 #include <bootloader.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -25,7 +26,6 @@ int main(bootinfo_t* bootinfo){
     irq_disable();
     pmm_init(bootinfo);
     screen_init(bootinfo);  
-    terminal_init();  
     acpi_init(bootinfo->rsdp);
     gdt_init();
     idt_init();
@@ -33,21 +33,18 @@ int main(bootinfo_t* bootinfo){
     pic_init();
     paging_init();
     heap_init();
+    tty_init();
 
     kbd_init();
     init_pci_devices();
     rtl8169_init();
-    
-    vfs_mount("/",fat_mount_partition(0,2048));
-    
-    devfs_init();
 
-    multitasking_init();
+    //devfs_init();
+
+    //multitasking_init();
     irq_enable();
 
-    syscall_install();
-
-    create_kernel_task(start_shell);
+    //syscall_install();
 
     while(1)asm("hlt");
 }

@@ -1,6 +1,7 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/keyboard.h>
 #include <kernel/common.h>
+#include <kernel/tty.h>
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -70,5 +71,5 @@ void devfs_init(){
     dev_add_node(up_node);
 
     zero_init();
-    tty_init();
+    tty_fs_init();
 }

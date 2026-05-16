@@ -35,9 +35,11 @@ void get_next_ready_task(){
 void schedule(struct interrupt_frame* regs){
     memcpy((void*)&current_task->context, (void*)regs, sizeof(struct interrupt_frame));
     asm volatile("fxsave %0 "::"m"(current_task->fxsave_region));
+    if(current_task->state == TASK_RUNNING) current_task->state = TASK_READY; 
 
     get_next_ready_task();
 
+    current_task = TASK_RUNNING;
     memcpy((void*)regs,(void*)&current_task->context,sizeof(struct interrupt_frame));
     switch_pml4((void*)current_task->cr3);
     tss_set_kernel_stack((void*)current_task->rsp0);

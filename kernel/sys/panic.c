@@ -7,7 +7,6 @@
 
 void panic(char* fmt, ...){
     irq_disable();
-    set_text_colour(WHITE);
     printf("\nKERNEL PANIC\n");
 
     va_list args;

@@ -16,6 +16,7 @@
 #define ALT_PRESSED 0x38
 #define TAB_PRESSED 0x0f
 #define ESCAPE_PRESSED 0x01
+#define ENTER_PRESSED 0x1c
 
 typedef struct input_event{
     uint8_t ascii;

@@ -7,6 +7,7 @@
 #include <kernel/mouse.h>
 #include <kernel/pci.h>
 #include <kernel/acpi.h>
+#include <kernel/mbr.h>
 #include <kernel/ata.h>
 #include <kernel/disk.h>
 #include <kernel/ramdisk.h>
@@ -46,5 +47,5 @@ int main(bootinfo_t* bootinfo){
 
     //syscall_install();
 
-    while(1)asm("hlt");
+    while(1) asm("hlt");
 }

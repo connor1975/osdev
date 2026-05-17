@@ -154,21 +154,6 @@ void sata_write(int device_no, uint64_t lba, uint16_t sector_count, void* buffer
     free_frames((void*)buffer_phys,(((sector_count * 512) + 4095) / 4096));
 }
 
-void ata_string_convert(char* str){
-    for (int i = 0; i < 40 - 1; i += 2) {
-        char temp = str[i];
-        str[i] = str[i + 1];
-        str[i + 1] = temp;
-    }
-
-    for (int i = 0; i < 40 - 1; i++) {
-        if (str[i] == ' ' && str[i + 1] == ' ') {
-            str[i + 2] = '\0';
-            break;
-        }
-    }
-}
-
 void sata_identify(int device_no, void* buffer){
     hba_port_t* port = ahci_devices[device_no]->port;
     uint64_t buffer_phys = (uint64_t)allocate_frame();

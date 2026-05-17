@@ -39,7 +39,7 @@ void schedule(struct interrupt_frame* regs){
 
     get_next_ready_task();
 
-    current_task = TASK_RUNNING;
+    current_task->state = TASK_RUNNING;
     memcpy((void*)regs,(void*)&current_task->context,sizeof(struct interrupt_frame));
     switch_pml4((void*)current_task->cr3);
     tss_set_kernel_stack((void*)current_task->rsp0);

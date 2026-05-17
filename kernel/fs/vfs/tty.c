@@ -23,24 +23,23 @@ void draw_cursor(tty_t* tty){
     }
 }
 
-void clear_cursor(tty_t* tty){
-    if(tty->cursor_x >= tty->width || tty->cursor_y >= tty->height) return;
-    tty_render_cell(current_tty, (tty->cursor_y * tty->width) + tty->cursor_x);
+void clear_cursor(){
+    if(current_tty->cursor_x >= current_tty->width || current_tty->cursor_y >= current_tty->height) return;
+    tty_render_cell(current_tty, (current_tty->cursor_y * current_tty->width) + current_tty->cursor_x);
 }
 
 void redraw_tty_screen(tty_t* tty){
     for(int i = 0; i < tty->cell_count; i++){
         tty_render_cell(tty,i);
     }
-    draw_cursor(tty);
+    if(current_tty->cursor_visible) draw_cursor(tty);
 }
 
 void handle_newline(tty_t* tty){
-    if(tty == current_tty && tty->echo && tty->cursor_visible){
-        clear_cursor(current_tty);
+    if(tty == current_tty && tty->cursor_visible){
+        clear_cursor();
     } 
     
-    tty->cursor_x = 0;
     tty->cursor_y++;
     if(tty->cursor_y >= tty->height){
         memmove(tty->cells, (char*)tty->cells + (tty->width * sizeof(tty_screen_cell_t)), (sizeof(tty_screen_cell_t) * tty->cell_count) - (tty->width * sizeof(tty_screen_cell_t)));
@@ -51,21 +50,32 @@ void handle_newline(tty_t* tty){
             bottom_row[i].c = 0;
         }
         tty->cursor_y = tty->height - 1;
-        if(tty == current_tty && tty->echo) redraw_tty_screen(tty);
+        if(tty == current_tty) redraw_tty_screen(tty);
         return;
     }
 }
 
-void tty_writechar(tty_t* tty,char c){
+void tty_writechar(tty_t* tty,uint8_t c){
     switch(c){
         case '\n':
             handle_newline(tty);
-            if(tty == current_tty && tty->echo) draw_cursor(tty);
+            if(tty->mode == TTY_CANONICAL)
+                tty_writechar(tty,'\r');
+            if(tty == current_tty && tty->cursor_visible) 
+                draw_cursor(tty);
+            return;
+        case '\r':
+            if(tty == current_tty && tty->cursor_visible)
+                clear_cursor();
+            tty->cursor_x = 0;
+            if(tty == current_tty && tty->cursor_visible) 
+                draw_cursor(tty);
             return;
     }
     
     if(tty->cursor_x >= tty->width){
         handle_newline(tty);
+        tty_writechar(current_tty,'\r');
     }
 
     int index = (tty->cursor_y * tty->width) + tty->cursor_x;
@@ -73,9 +83,10 @@ void tty_writechar(tty_t* tty,char c){
     tty->cells[index].fg = tty->default_fg;
     tty->cells[index].bg = tty->default_bg;
     tty->cursor_x++;
-    if(tty == current_tty && tty->echo){
+    if(tty == current_tty){
         tty_render_cell(tty,index);
-        draw_cursor(tty);
+        if(tty->cursor_visible)
+            draw_cursor(tty);
     }
 }
 
@@ -83,8 +94,130 @@ void putchar(int c){
     tty_writechar(current_tty,(char)c);
 }
 
-void tty_handle_input(input_event_t input_event){
+int tty_ring_push(tty_t* tty, uint8_t c) {
+    uint32_t next = (tty->head + 1) % INPUT_BUFFER_SIZE;
 
+    if (next == tty->tail)
+        return -1;
+
+    tty->ring_buffer[tty->head] = c;
+    tty->head = next;
+
+    return 0;
+}
+
+int tty_ring_pop(tty_t* tty, uint8_t* out) {
+    if (tty->head == tty->tail)
+        return -1;
+
+    *out = tty->ring_buffer[tty->tail];
+    tty->tail = (tty->tail + 1) % INPUT_BUFFER_SIZE;
+
+    return 0;
+}
+
+void tty_raw_input_send_escape(uint8_t byte){
+    tty_ring_push(current_tty, 0x1b);
+    tty_ring_push(current_tty, '[');
+    tty_ring_push(current_tty,byte);
+}
+
+static inline void raw_print_arrows(uint8_t byte){
+    tty_writechar(current_tty,'^');
+    tty_writechar(current_tty,'[');
+    tty_writechar(current_tty,'[');
+    tty_writechar(current_tty,byte);
+}
+
+void tty_handle_input_raw(input_event_t input_event){
+    if(input_event.ascii != 0){
+        tty_ring_push(current_tty,input_event.ascii);
+        if(current_tty->echo){
+            if(input_event.ascii == '\r'){
+                tty_writechar(current_tty,'^');
+                tty_writechar(current_tty,'M');
+            }else{
+                tty_writechar(current_tty,input_event.ascii);
+            }
+        }
+    }else{
+        switch(input_event.scancode){
+            case ARROW_DOWN_PRESSED:
+            tty_raw_input_send_escape('B');
+            raw_print_arrows('B');
+            break;
+            case ARROW_UP_PRESSED:
+            tty_raw_input_send_escape('A');
+            raw_print_arrows('A');
+            break;
+            case ARROW_RIGHT_PRESSED:
+            tty_raw_input_send_escape('C');
+            raw_print_arrows('C');
+            break;
+            case ARROW_LEFT_PRESSED:
+            tty_raw_input_send_escape('D');
+            raw_print_arrows('D');
+            break;
+        }
+    }
+}
+
+void tty_handle_input_canonical(input_event_t input_event){
+    if(current_tty->line_ready) return;
+    if(input_event.ascii != 0){
+        char c = input_event.ascii;
+        
+        switch(c){
+            case 0x7f:
+            if(current_tty->line_buffer_write_index > 0){
+                if(current_tty->cursor_visible && current_tty->echo) clear_cursor();
+                current_tty->line_buffer_write_index--;
+                current_tty->line_buffer[current_tty->line_buffer_write_index] = 0;
+                
+                current_tty->cursor_x--;
+                current_tty->cells[(current_tty->cursor_y * current_tty->width) + current_tty->cursor_x].c = 0;
+                if(current_tty->echo){
+                    tty_render_cell(current_tty,(current_tty->cursor_y * current_tty->width) + current_tty->cursor_x);
+                    if(current_tty->cursor_visible) draw_cursor(current_tty);
+                }
+                return;
+            }
+            return;            
+            case '\r':
+            current_tty->line_buffer[current_tty->line_buffer_write_index] = '\n';
+            current_tty->line_buffer[current_tty->line_buffer_write_index + 1] = 0;
+            current_tty->line_ready = 1;
+            break;
+            default:
+            current_tty->line_buffer[current_tty->line_buffer_write_index] = c;
+            current_tty->line_buffer_write_index++;
+            break;
+        }
+
+        if(current_tty->echo){
+            if(input_event.scancode == ENTER_PRESSED) tty_writechar(current_tty,'\n');
+            tty_writechar(current_tty,c);
+        }
+    }
+}
+
+void tty_handle_input(input_event_t input_event){
+    if(current_tty->mode == TTY_RAW){
+        tty_handle_input_raw(input_event);
+    }else{
+        tty_handle_input_canonical(input_event);
+    }
+}
+
+void tty_move_cursor(tty_t* tty, int x, int y){
+    if(x >= tty->width || y > tty->height) return;
+    if(tty == current_tty && tty->cursor_visible) clear_cursor();
+
+    tty->cursor_x = x;
+    tty->cursor_y = y;
+    if(tty->cursor_visible && tty == current_tty){
+        draw_cursor(current_tty);
+    }    
 }
 
 #define TIOCGWINSZ 0x5413
@@ -111,7 +244,41 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
     return -EINVAL;
 }
 
-/*
+uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+    tty_t* tty = current_tty;
+    for(int i = 0; i < size; i++){
+        tty_writechar(tty,buffer[i]);
+    }
+}
+
+uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+    tty_t* tty = current_tty;
+    if(tty->mode == TTY_RAW){
+        int bytes_read = 0;
+        uint8_t c;
+        while(tty_ring_pop(tty,&c) == 0 && bytes_read < size){
+            buffer[bytes_read] = c;
+            bytes_read++;
+        }
+        return bytes_read;
+    }else{
+        int bytes_read = 0;
+        while(!tty->line_ready);
+        for(int i = 0; i < size; i++){
+            buffer[i] = tty->line_buffer[tty->line_buffer_read_index];
+            bytes_read++;
+            tty->line_buffer_read_index++;
+            if(tty->line_buffer[tty->line_buffer_read_index] == 0){
+                tty->line_buffer_write_index = 0;
+                tty->line_buffer_read_index = 0;
+                tty->line_ready = 0;
+                return bytes_read;
+            } 
+        }
+        return bytes_read;
+    }
+}
+
 fs_node_t* create_stdin_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
     strcpy(node->name,"stdin");
@@ -123,7 +290,7 @@ fs_node_t* create_stdin_device(){
     node->impl = 0;
     node->length = 0;
     node->ptr = 0;
-    node->read = 0;
+    node->read = tty_read;
     node->write = 0;
     node->readdir = 0;
     node->finddir = 0;
@@ -180,20 +347,19 @@ fs_node_t* create_tty_device(){
     node->impl = 0;
     node->length = 0;
     node->ptr = 0;
-    node->read = 0;
+    node->read = tty_read;
     node->write = tty_write;
     node->readdir = 0;
     node->finddir = 0;
     node->ioctl = tty_ioctl;
     return node;
 }    
-*/
 
 void tty_fs_init(){
-    //dev_add_node(create_stdin_device());
-    //dev_add_node(create_stdout_device());
-    //dev_add_node(create_stderr_device());
-    //dev_add_node(create_tty_device());
+    dev_add_node(create_stdin_device());
+    dev_add_node(create_stdout_device());
+    dev_add_node(create_stderr_device());
+    dev_add_node(create_tty_device());
 }
 
 void tty_init(){
@@ -201,7 +367,7 @@ void tty_init(){
     ttys = calloc(2,sizeof(tty_t*));
 
     for(int i = 0; i < num_ttys; i++){
-        ttys[i] = malloc(sizeof(tty_t));    
+        ttys[i] = calloc(sizeof(tty_t),1);    
         tty_t* tty = ttys[i];
         tty->width = framebuffer_width / font_width;
         tty->height = framebuffer_height / font_height;
@@ -216,5 +382,4 @@ void tty_init(){
         tty->echo = 1;
     }
     current_tty = ttys[0];
-    
 }

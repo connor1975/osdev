@@ -1,6 +1,8 @@
 #include <kernel/common.h>
+#include <kernel/mm.h>
 #include <kernel/ata.h>
 #include <kernel/disk.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #define ATA_DATA_REG 0
@@ -21,6 +23,21 @@ void ata_poll(int secondary){
     int io_base = PRIMARY_IO_BASE;
     if(secondary) io_base = SECONDARY_IO_BASE;
     while((inb(io_base + ATA_STATUS_REG) & 0x80) && (!(inb(io_base + ATA_STATUS_REG) & 8)));
+}
+
+void ata_string_convert(char* str){
+    for (int i = 0; i < 40 - 1; i += 2) {
+        char temp = str[i];
+        str[i] = str[i + 1];
+        str[i + 1] = temp;
+    }
+
+    for (int i = 0; i < 40 - 1; i++) {
+        if (str[i] == ' ' && str[i + 1] == ' ') {
+            str[i + 2] = '\0';
+            break;
+        }
+    }
 }
 
 void ata_pio28_read(int secondary, int slave, uint32_t lba, uint16_t sector_count,void* buffer){
@@ -73,6 +90,7 @@ int ata_identify(int secondary, int slave, void* buffer){
     outb(io_base + ATA_LBA_HIGH_REG, 0);
     outb(io_base + ATA_COMMAND_REG, IDENTIFY);
     if(inb(io_base + ATA_STATUS_REG) == 0) return 1;
+    if((inb(io_base + ATA_STATUS_REG) & 1)) return 1;
     uint16_t* bufferptr = buffer;
     ata_poll(secondary);
     for(int x = 0; x < 256; x++){
@@ -82,14 +100,30 @@ int ata_identify(int secondary, int slave, void* buffer){
     return 0;
 }
 
-void lazy_ata_read_primary(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
-    ata_pio28_read(0,0,lba,sector_count,buffer);
+void ata_read(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
+    ata_pio28_read(disk / 2,disk % 2, lba, sector_count,buffer);
 }
 
-void lazy_ata_write_primary(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
-    ata_pio28_write(0,0,lba,sector_count,buffer);
+void ata_write(int disk, uint64_t lba, uint16_t sector_count, void* buffer){
+    ata_pio28_write(disk / 2,disk % 2, lba, sector_count,buffer);
 }
 
 void ata_init(uint8_t bus, uint8_t dev, uint8_t func){
-    register_disk(0,DISK_HARDDRIVE,lazy_ata_read_primary,lazy_ata_write_primary,"ATA_PIO HDD");
+    struct ata_identity* identity = (struct ata_identity*)malloc(512);
+    if(ata_identify(0,0,identity) == 0){
+        ata_string_convert((char*)identity->model);
+        register_disk(0,DISK_HARDDRIVE,ata_read, ata_write,(char*)identity->model);
+    }
+    if(ata_identify(0,1,identity) == 0){
+        ata_string_convert((char*)identity->model);
+        register_disk(1,DISK_HARDDRIVE,ata_read, ata_write,(char*)identity->model);
+    }
+    if(ata_identify(1,0,identity) == 0){
+        ata_string_convert((char*)identity->model);
+        register_disk(2,DISK_HARDDRIVE,ata_read, ata_write,(char*)identity->model);
+    }
+    if(ata_identify(1,1,identity) == 0){
+        ata_string_convert((char*)identity->model);
+        register_disk(3,DISK_HARDDRIVE,ata_read, ata_write,(char*)identity->model);
+    }
 }

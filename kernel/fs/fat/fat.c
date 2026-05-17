@@ -63,6 +63,7 @@ uint32_t get_next_cluster32(fat_mounted_volume_t* volume, uint32_t cluster){
         volume->fat_index = fat_chunk_offset;
     }
     uint32_t next_cluster = *(uint32_t*)(volume->fat_buffer + fat_offset);
+    next_cluster &= 0x0FFFFFFF;
     return next_cluster;
 }
 
@@ -74,7 +75,7 @@ uint32_t get_next_cluster16(fat_mounted_volume_t* volume, uint32_t cluster){
         fat_volume_read_sectors(volume,volume->bootsector->reserved_sector_count + (fat_chunk_offset * FAT_BUFFER_SIZE),FAT_BUFFER_SIZE,volume->fat_buffer);
         volume->fat_index = fat_chunk_offset;
     }
-    uint32_t next_cluster = *(uint32_t*)(volume->fat_buffer + fat_offset);
+    uint32_t next_cluster = *(uint16_t*)(volume->fat_buffer + fat_offset);
     return next_cluster;
 }
 
@@ -307,7 +308,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
 
 fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
     memset(&dirent,0,sizeof(struct dirent));
-    fat_mounted_volume_t* volume = malloc(sizeof(fat_mounted_volume_t));
+    fat_mounted_volume_t* volume = calloc(sizeof(fat_mounted_volume_t),1);
     
     volume->disk_no = disk_no;
     volume->partition_offset = partition_lba;

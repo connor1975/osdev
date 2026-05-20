@@ -3,6 +3,9 @@
 #include <kernel/keyboard.h>
 #include <kernel/tty.h>
 #include <kernel/screen.h>
+#include <kernel/ansi.h>
+#include <sys/termios.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -90,8 +93,14 @@ void tty_writechar(tty_t* tty,uint8_t c){
     }
 }
 
+void tty_putchar(tty_t* tty,uint8_t c){
+    if(handle_ansi(tty,c))
+        return;
+    tty_writechar(tty,c);
+}
+
 void putchar(int c){
-    tty_writechar(current_tty,(char)c);
+    tty_putchar(current_tty,(char)c);
 }
 
 int tty_ring_push(tty_t* tty, uint8_t c) {
@@ -210,7 +219,7 @@ void tty_handle_input(input_event_t input_event){
 }
 
 void tty_move_cursor(tty_t* tty, int x, int y){
-    if(x >= tty->width || y > tty->height) return;
+    if(x >= tty->width || y >= tty->height || y < 0 || x < 0) return;
     if(tty == current_tty && tty->cursor_visible) clear_cursor();
 
     tty->cursor_x = x;
@@ -220,14 +229,25 @@ void tty_move_cursor(tty_t* tty, int x, int y){
     }    
 }
 
-#define TIOCGWINSZ 0x5413
+void tty_set_cursor_visibility(tty_t* tty, int visible){
+    if(tty == current_tty){
+        if(visible && !tty->cursor_visible){
+            draw_cursor(current_tty);
+        }else if(!visible && tty->cursor_visible){
+            clear_cursor();
+        }
+    }
+    tty->cursor_visible = visible;
+}
 
-struct winsize {
-    unsigned short ws_row;
-    unsigned short ws_col;
-    unsigned short ws_xpixel;
-    unsigned short ws_ypixel;
-};
+void tty_clear_screen(tty_t* tty){
+    for(int i = 0; i < tty->cell_count; i++){
+        tty->cells[i].c = 0;
+        tty->cells[i].fg = tty->default_fg;
+        tty->cells[i].bg = tty->default_bg;
+    }
+    if(tty == current_tty) redraw_tty_screen(tty);
+}
 
 int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
     switch(request){
@@ -240,6 +260,38 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
             winsize->ws_ypixel = framebuffer_height;
             return 0;
         break;
+        case TCGETS:
+            if(argp == NULL) return -EINVAL;
+            struct termios* termios_p = argp;
+            termios_p->c_iflag = 0;
+            termios_p->c_oflag = 0;
+            termios_p->c_cflag = 0;
+            termios_p->c_lflag = 0 | (current_tty->mode == TTY_CANONICAL ? ICANON : 0) | (current_tty->echo ? ECHO : 0);
+            if (termios_p->c_lflag & ICANON) {
+                termios_p->c_iflag |= ICRNL;
+                termios_p->c_oflag |= OPOST;
+            }   
+
+            if (!(termios_p->c_lflag & ICANON)) {
+                termios_p->c_iflag &= ~(ICRNL | IXON | BRKINT);
+                termios_p->c_oflag &= ~OPOST;
+            }
+            return 0;
+        break;
+        case TCSETS:
+            if(argp == NULL) return -EINVAL;
+            struct termios* new_termios = argp;
+            if((new_termios->c_lflag & ICANON) != 0){
+                current_tty->mode = TTY_CANONICAL;
+            }else{
+                current_tty->mode = TTY_RAW;
+            }
+            if((new_termios->c_lflag & ECHO) != 0){
+                current_tty->echo = 1;
+            }else{
+                current_tty->echo = 0;
+            }
+            return 0;
     }
     return -EINVAL;
 }
@@ -247,8 +299,9 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
 uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
     tty_t* tty = current_tty;
     for(int i = 0; i < size; i++){
-        tty_writechar(tty,buffer[i]);
+        tty_putchar(tty,buffer[i]);
     }
+    return size;
 }
 
 uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){

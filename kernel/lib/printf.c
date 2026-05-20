@@ -101,6 +101,7 @@ void vprintf(char* fmt, va_list valist){
                     printf_unsigned(va_arg(valist,uint64_t),2);
                     break;
                 }
+                break;
                 case 'o':
                 switch(length){
                     case PRINTF_LENGTH_STANDARD:

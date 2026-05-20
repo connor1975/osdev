@@ -155,7 +155,6 @@ void fat_read_bootsector(fat_mounted_volume_t* volume){
 
 uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
     if(offset >= node->length) return 0;
-    if(offset >= node->length - 1) return 0;
     if(offset + size >= node->length){
         size = node->length - offset;
     }

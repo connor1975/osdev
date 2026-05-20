@@ -25,7 +25,7 @@ uint64_t get_page_entry(void* virt, uint64_t* pml4){
 	uint64_t* pd = (uint64_t*)phys_to_virt((void*)(pdpt[pdptoff] & 0xFFFFFFFFFFFFF000));
 	if(!(pdpt[pdptoff] & PAGE_FLAG_PRESENT)) return 0;
 	uint64_t* pt = (uint64_t*)phys_to_virt((void*)(pd[pdoff] & 0xFFFFFFFFFFFFF000));
-	if(!(pml4[pml4off] & PAGE_FLAG_PRESENT)) return 0;
+	if(!(pt[ptoff] & PAGE_FLAG_PRESENT)) return 0;
 	return pt[ptoff];
 }
 

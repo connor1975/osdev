@@ -40,12 +40,12 @@ int main(bootinfo_t* bootinfo){
     init_pci_devices();
     rtl8169_init();
 
-    //devfs_init();
+    devfs_init();
 
-    //multitasking_init();
+    multitasking_init();
     irq_enable();
 
-    //syscall_install();
+    syscall_install();
 
     while(1) asm("hlt");
 }

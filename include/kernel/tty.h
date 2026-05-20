@@ -2,6 +2,8 @@
 #define TTY_H
 
 #include <stdint.h>
+#include <kernel/fs/vfs.h>
+#include <kernel/keyboard.h>
 
 typedef struct{
     char c;
@@ -41,15 +43,23 @@ typedef struct {
     int line_buffer_write_index;
     int line_buffer_read_index;
     int line_ready;
+
+    int ansi_state;
+    int ansi_params[8];
+    int ansi_param_count;
+    int ansi_private;
 } tty_t;
 
 
 void redraw_tty_screen(tty_t* tty);
 void tty_init();
 void tty_fs_init();
+void tty_move_cursor(tty_t* tty, int x, int y);
 void tty_handle_input(input_event_t input);
 uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
 uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
+void tty_set_cursor_visibility(tty_t* tty, int visible);
+void tty_clear_screen(tty_t* tty);
 
 tty_t* current_tty;
 tty_t** ttys;

@@ -49,4 +49,9 @@ void gdt_init();
 
 void tss_set_kernel_stack(void* rsp0);
 
+#define USER_CODE 0x18
+#define USER_DATA 0x20
+#define KERNEL_CODE 0x08
+#define KERNEL_DATA 0x10
+
 #endif

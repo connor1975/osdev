@@ -24,6 +24,7 @@
 
 int pci_find_device(uint16_t target_class, uint16_t target_subclass, uint8_t* bus, uint8_t* device, uint8_t* func);
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off);
+void pci_config_write(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off,uint32_t reg);
 void enumerate_pci();
 void init_pci_devices();
 uint32_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t function);

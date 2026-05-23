@@ -1,1 +1,1 @@
-qemu-system-x86_64 -hda bin/os.img -monitor stdio -m 256M -machine q35
+qemu-system-x86_64 -hda bin/os.img -monitor stdio -m 256M -machine q35 -netdev tap,id=n1,ifname="OpenVPN TAP-Windows6",script=no,downscript=no -device rtl8139,netdev=n1

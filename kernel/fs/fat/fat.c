@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
-// Readonly FAT32 FAT16 and FAT12 driver
+// FAT32 FAT16 and FAT12 driver
 
 #define FAT_BUFFER_SIZE 16
 
@@ -34,7 +34,7 @@ void fat_volume_write(fat_mounted_volume_t* volume, int offset, int size, void* 
     int sector_count = ((byte_off + size) + (volume->bootsector->bytes_per_sector - 1)) / volume->bootsector->bytes_per_sector;
     void* sector_buffer = malloc(volume->bootsector->bytes_per_sector * sector_count);
     fat_volume_read_sectors(volume,lba_off,sector_count,sector_buffer);
-    memcpy(sector_buffer + byte_off,buffer, size);
+    memcpy(sector_buffer + byte_off,buffer,size);
     fat_volume_write_sectors(volume,lba_off,sector_count,sector_buffer);
     free(sector_buffer);
 }
@@ -163,15 +163,17 @@ uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
     struct fat_node_info* fatinfo = volume->fileinfo[node->inode];
     uint32_t current_cluster = fatinfo->starting_cluster;
 
-    uint32_t cluster_offset = offset / (volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster);
-    uint32_t byte_offset = offset % (volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster);
+    uint32_t cluster_offset = offset / volume->cluster_size;
+    uint32_t byte_offset = offset % volume->cluster_size;
     for(int i = 0; i < cluster_offset; i++){
         current_cluster =  get_next_cluster(volume,current_cluster);
         if(is_end_of_chain(volume,current_cluster)){
             return 0;
         }
     }
-    uint64_t cluster_count = ((offset + size) + ((volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector) - 1)) / (volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector);
+
+    uint32_t end_cluster = (offset + size - 1) / volume->cluster_size;
+    uint32_t cluster_count = end_cluster - cluster_offset + 1;    
     void* clusterbuffer = malloc((volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster) * cluster_count);
 
     int i = 0;
@@ -187,8 +189,135 @@ uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
     return size;
 }
 
-uint32_t fat_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint32_t fat_get_free_cluster32(fat_mounted_volume_t* volume){
+    uint32_t fat_entries = (volume->fat_size * volume->bootsector->bytes_per_sector) / 4;
+    for(uint32_t i = 2; i < fat_entries; i++){
+        uint32_t fat_chunk_offset = (i * 4) / (FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+        uint32_t fat_offset = (i * 4) % (FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+        if(volume->fat_buffer == NULL) volume->fat_buffer = malloc(FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+        if(volume->fat_index != fat_chunk_offset) {
+            fat_volume_read_sectors(volume,volume->bootsector->reserved_sector_count + (fat_chunk_offset * FAT_BUFFER_SIZE),FAT_BUFFER_SIZE,volume->fat_buffer);
+            volume->fat_index = fat_chunk_offset;
+        }
+        uint32_t* fat_table = (uint32_t*)((uint8_t*)volume->fat_buffer + fat_offset);
+        if(*fat_table == 0) return i;
+    }
     return 0;
+}
+
+void fat_set_entry32(fat_mounted_volume_t* volume, uint32_t cluster, uint32_t value){
+    uint32_t fat_chunk_offset = (cluster * 4) / (FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+    uint32_t fat_offset = (cluster * 4) % (FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+    
+    if(volume->fat_buffer == NULL) volume->fat_buffer = malloc(FAT_BUFFER_SIZE * volume->bootsector->bytes_per_sector);
+    if(volume->fat_index != fat_chunk_offset){
+        fat_volume_read_sectors(volume, volume->bootsector->reserved_sector_count + (fat_chunk_offset * FAT_BUFFER_SIZE), FAT_BUFFER_SIZE, volume->fat_buffer);
+        volume->fat_index = fat_chunk_offset;
+    }
+    
+    uint32_t* entry = (uint32_t*)((uint8_t*)volume->fat_buffer + fat_offset);
+    *entry = (*entry & 0xF0000000) | (value & 0x0FFFFFFF); // preserve top 4 bits
+    
+    fat_volume_write_sectors(volume, volume->bootsector->reserved_sector_count + (fat_chunk_offset * FAT_BUFFER_SIZE), FAT_BUFFER_SIZE, volume->fat_buffer);
+}
+
+uint32_t fat_append_cluster32(fat_mounted_volume_t* volume, uint32_t prev_cluster){
+    uint32_t new_cluster = fat_get_free_cluster32(volume);
+    if(new_cluster == 0) panic("disk full ( failed in append cluster )");
+    fat_set_entry32(volume, prev_cluster, new_cluster);
+    fat_set_entry32(volume, new_cluster, FAT32_CHAIN_END);
+    return new_cluster;
+}
+
+// fat32 only for now
+void fat_update_file_size(fat_mounted_volume_t* volume, fs_node_t* file, uint32_t new_size){
+    struct fat_node_info* fatinfo = volume->fileinfo[file->inode];
+    
+    void* buffer = NULL;
+    uint64_t buffer_size = 0;
+    uint32_t current_cluster = fatinfo->parent_dir_cluster;
+    int i = 0;
+    while(!is_end_of_chain(volume,current_cluster)){
+        buffer_size +=(volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector);
+        buffer = realloc(buffer,buffer_size);
+        fat_volume_read_sectors(volume,cluster_to_lba(volume,current_cluster),volume->bootsector->sectors_per_cluster,buffer + ((volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector) * i));
+        current_cluster = get_next_cluster(volume,current_cluster);
+        i++;
+    }
+    uint32_t entry_count = (volume->bootsector->sectors_per_cluster * 16) * i;
+    char* fat_name = to_fat_filename(file->name);
+    uint32_t file_index = 0;
+    for(int i = 0; i < entry_count; i++){
+        struct fat_dirent* dirent = (struct fat_dirent*)(buffer + (i * sizeof(struct fat_dirent)));
+        if(memcmp(dirent->name,fat_name,11) == 0){
+            dirent->file_size = new_size;
+            file_index = i;
+            break;
+        }
+    }
+    int cluster_offset = (file_index * sizeof(struct fat_dirent)) / volume->cluster_size;
+    int byte_offset = (file_index * sizeof(struct fat_dirent)) % volume->cluster_size;
+
+    current_cluster = fatinfo->parent_dir_cluster;
+    for(int i = 0; i < cluster_offset; i++){
+        current_cluster = get_next_cluster(volume, current_cluster);
+    }
+
+    fat_volume_write(volume, (cluster_to_lba(volume,(current_cluster)) * volume->bootsector->bytes_per_sector) + byte_offset, sizeof(struct fat_dirent), buffer + (cluster_offset * volume->cluster_size) + byte_offset);
+    file->length = new_size;
+    free(buffer);
+}
+
+uint32_t fat_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){ 
+    fat_mounted_volume_t* volume = (fat_mounted_volume_t*)node->impl;
+    struct fat_node_info* fatinfo = volume->fileinfo[node->inode];
+    uint32_t current_cluster = fatinfo->starting_cluster;
+
+    uint32_t cluster_offset = offset / volume->cluster_size;
+    uint32_t byte_offset = offset % volume->cluster_size;
+    for(int i = 0; i < cluster_offset; i++){
+        if(is_end_of_chain(volume,get_next_cluster(volume,current_cluster))){
+            fat_append_cluster32(volume,current_cluster);
+        }
+        current_cluster =  get_next_cluster(volume,current_cluster);
+    }
+
+    uint32_t end_cluster = (offset + size - 1) / volume->cluster_size;
+    uint32_t cluster_count = end_cluster - cluster_offset + 1;    
+    void* clusterbuffer = malloc((volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster) * cluster_count);
+
+    int i = 0;
+    uint32_t next;
+    while(i < cluster_count){
+        next = get_next_cluster(volume,current_cluster);
+        fat_volume_read_sectors(volume,cluster_to_lba(volume,current_cluster),volume->bootsector->sectors_per_cluster,clusterbuffer + (i * (volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster)));
+        i++;
+        if(is_end_of_chain(volume,next) && i < cluster_count){
+            current_cluster = fat_append_cluster32(volume,current_cluster);
+        }else{
+            current_cluster = next;
+        }
+    }
+
+    memcpy(clusterbuffer + byte_offset,buffer,size);
+
+    current_cluster = fatinfo->starting_cluster;
+    for(int i = 0; i < cluster_offset; i++){
+        current_cluster =  get_next_cluster(volume,current_cluster);
+    }
+
+    i = 0;
+    while(i < cluster_count){
+        fat_volume_write_sectors(volume,cluster_to_lba(volume,current_cluster),volume->bootsector->sectors_per_cluster,clusterbuffer + (i * (volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster)));
+        i++;
+        current_cluster = get_next_cluster(volume,current_cluster);
+    }
+
+    free(clusterbuffer);
+    if((offset + size) > node->length){
+        fat_update_file_size(volume,node,offset+size);
+    }
+    return size;
 }
 
 static struct dirent dirent;
@@ -230,6 +359,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
     struct fat_node_info* fat_info = volume->fileinfo[node->inode];
     fat_info->starting_cluster = dir_cluster;
     fat_info->no_child = num_files;
+    fat_info->parent_dir_cluster = 0;
     fat_info->children = malloc(sizeof(void*) * num_files);
 
     fs_node_t* current_dir = malloc(sizeof(fs_node_t));
@@ -296,6 +426,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             fat_extras->starting_cluster = dir[x].cluster_low | ((uint64_t)dir[x].cluster_high << 16);
             fat_extras->children = 0;
             fat_extras->no_child = 0;
+            fat_extras->parent_dir_cluster = dir_cluster;
             fat_info->children[i] = new_node;
             volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
             volume->fileinfo[new_node->inode] = fat_extras;
@@ -354,12 +485,15 @@ fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
         memcpy(volume->volume_name,extended_bs->volume_label,11);
         volume->volume_name[11] = 0;
         root_dir_start_cluster = extended_bs->root_cluster;
+        volume->fat_size = extended_bs->table_size_32;
     }else{
         struct old_fatbs_ext* extended_bs = (struct old_fatbs_ext*)volume->bootsector->extended_section;
         memcpy(volume->volume_name,extended_bs->volume_label,11);
         volume->volume_name[11] = 0;
         root_dir_start_cluster = 0;
+        volume->fat_size = volume->bootsector->table_size_16;
     }
+    volume->cluster_size = volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster;
     populate_directory(volume,vol_root,NULL,root_dir_start_cluster);
     return vol_root;
 }

@@ -2,6 +2,7 @@
 #include <kernel/mm.h>
 #include <kernel/pci.h>
 #include <kernel/net/networking.h>
+#include <kernel/net/nic.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -31,10 +32,10 @@ struct descriptor{
 }__attribute__((packed));
 
 uint8_t rtl8169_mac_address[6];
-uint32_t iobase;
+static uint32_t iobase;
 
-struct descriptor* rx_descriptors;
-struct descriptor* tx_descriptors;
+static struct descriptor* rx_descriptors;
+static struct descriptor* tx_descriptors;
 
 int is_rtl8169(uint32_t vendor_id, uint32_t device_id){
     if(vendor_id == 0x10ec){
@@ -103,7 +104,7 @@ void rtl8169_send(void *packet, uint32_t packetsize) {
 
     struct descriptor* desc = &tx_descriptors[0];
 
-    uint64_t phys = (uint64_t)desc->buffer_low | ((uint64_t)desc->buffer_high >> 32);
+    uint64_t phys = (uint64_t)desc->buffer_low | ((uint64_t)desc->buffer_high << 32);
     void* virt = phys_to_virt((void*)phys);
 
     memcpy(virt, packet, packetsize);
@@ -120,12 +121,9 @@ uint8_t* rtl8169_get_mac(){
     return rtl8169_mac_address;
 }
 
-void rtl8169_init(){
-    uint8_t bus,dev,func;
-    pci_find_device(PCI_CLASS_NETWORK_CONTROLLER,PCI_SUBCLASS_NETWORK_ETHERNET,&bus,&dev,&func);
+void rtl8169_init(uint8_t bus, uint8_t dev, uint8_t func){
     uint32_t device_id = pci_get_device_id(bus,dev,func);
     uint32_t vendor_id = pci_get_vendor_id(bus, dev, func);
-
     if(is_rtl8169(vendor_id,device_id)) return;
 
     uint32_t bar0 = pci_config_read(bus,dev,func,0x10);
@@ -157,4 +155,5 @@ void rtl8169_init(){
     outw(iobase + INT_MASK_REG_OFF, 0xC1FF);
     outb(iobase + COMMAND_REG_OFF, 0x0C);
     outb(iobase + CR93C46_OFF, 0x00);
+    register_nic(rtl8169_get_mac,rtl8169_send);
 }

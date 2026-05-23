@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/keyboard.h>
+#include <kernel/spinlock.h>
 
 typedef struct{
     char c;

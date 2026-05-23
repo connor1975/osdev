@@ -106,28 +106,28 @@ void putchar(int c){
 int tty_ring_push(tty_t* tty, uint8_t c) {
     uint32_t next = (tty->head + 1) % INPUT_BUFFER_SIZE;
 
-    if (next == tty->tail)
+    if (next == tty->tail){
         return -1;
+    }
 
     tty->ring_buffer[tty->head] = c;
     tty->head = next;
-
     return 0;
 }
 
 int tty_ring_pop(tty_t* tty, uint8_t* out) {
-    if (tty->head == tty->tail)
+    if (tty->head == tty->tail){
         return -1;
+    }
 
     *out = tty->ring_buffer[tty->tail];
     tty->tail = (tty->tail + 1) % INPUT_BUFFER_SIZE;
-
     return 0;
 }
 
 void tty_raw_input_send_escape(uint8_t byte){
     tty_ring_push(current_tty, 0x1b);
-    tty_ring_push(current_tty, '[');
+    tty_ring_push(current_tty, 91);
     tty_ring_push(current_tty,byte);
 }
 
@@ -153,19 +153,19 @@ void tty_handle_input_raw(input_event_t input_event){
         switch(input_event.scancode){
             case ARROW_DOWN_PRESSED:
             tty_raw_input_send_escape('B');
-            raw_print_arrows('B');
+            if(current_tty->echo) raw_print_arrows('B');
             break;
             case ARROW_UP_PRESSED:
             tty_raw_input_send_escape('A');
-            raw_print_arrows('A');
+            if(current_tty->echo) raw_print_arrows('A');
             break;
             case ARROW_RIGHT_PRESSED:
             tty_raw_input_send_escape('C');
-            raw_print_arrows('C');
+            if(current_tty->echo) raw_print_arrows('C');
             break;
             case ARROW_LEFT_PRESSED:
             tty_raw_input_send_escape('D');
-            raw_print_arrows('D');
+            if(current_tty->echo) raw_print_arrows('D');
             break;
         }
     }
@@ -309,7 +309,8 @@ uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
     if(tty->mode == TTY_RAW){
         int bytes_read = 0;
         uint8_t c;
-        while(tty_ring_pop(tty,&c) == 0 && bytes_read < size){
+        while(tty->tail == tty->head); // Wait for input
+        while(bytes_read < size && tty_ring_pop(tty,&c) == 0){
             buffer[bytes_read] = c;
             bytes_read++;
         }

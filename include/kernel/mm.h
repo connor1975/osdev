@@ -9,6 +9,7 @@
 #define PAGE_FLAG_USER          0b100
 #define PAGE_FLAG_WRITETHROUGH  0b1000
 #define PAGE_FLAG_CACHEDISABLE  0b10000
+#define PAGE_SIZE 4096
 
 #include <stdint.h>
 
@@ -18,6 +19,8 @@ void free_frame(void* frame);
 void free_frames(void* frames, int nframes);
 uint64_t get_used_frame_count();
 uint64_t get_free_frame_count();
+
+void verify_heap_integrity();
 
 #include <bootloader.h>
 

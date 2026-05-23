@@ -2,6 +2,8 @@
 #include <kernel/pci.h>
 #include <kernel/ahci.h>
 #include <kernel/ata.h>
+#include <kernel/rtl8169.h>
+#include <kernel/rtl8139.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -9,6 +11,12 @@ uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_
     uint32_t x = reg_off | (func << 8) | (device << 11) | (bus << 16) | (1 << 31);
     outl(0xCF8, x);
     return inl(0xCFC);      
+}
+
+void pci_config_write(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off,uint32_t reg){
+    uint32_t x = reg_off | (func << 8) | (device << 11) | (bus << 16) | (1 << 31);
+    outl(0xCF8, x);
+    outl(0xCFC,reg);      
 }
 
 int pci_find_device(uint16_t target_class, uint16_t target_subclass, uint8_t* bus, uint8_t* device, uint8_t* func){
@@ -76,6 +84,11 @@ void init_pci_devices(){
 
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_AHCI) ahci_init(b,d,f);
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) ata_init(b,d,f);
+                    if(class == PCI_CLASS_NETWORK_CONTROLLER && subclass == PCI_SUBCLASS_NETWORK_ETHERNET) {
+                        // let the drivers themselves figure out which one they are
+                        rtl8169_init(b,d,f);
+                        rtl8139_init(b,d,f);
+                    }
                 }
             }
         }

@@ -4,7 +4,6 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/gdt.h>
 #include <kernel/keyboard.h>
-#include <kernel/mouse.h>
 #include <kernel/pci.h>
 #include <kernel/acpi.h>
 #include <kernel/mbr.h>
@@ -13,9 +12,10 @@
 #include <kernel/ramdisk.h>
 #include <kernel/ahci.h>
 #include <kernel/fs/fat.h>
-#include <kernel/rtl8169.h>
+#include <kernel/rtl8139.h>
 #include <kernel/pipe.h>
 #include <kernel/tty.h>
+#include <kernel/net/networking.h>
 #include <bootloader.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -38,8 +38,10 @@ int main(bootinfo_t* bootinfo){
 
     kbd_init();
     init_pci_devices();
-    rtl8169_init();
 
+    uint32_t lba = 0;
+    get_partition_lba(0,0,&lba);
+    vfs_mount("/",fat_mount_partition(0,lba));
     devfs_init();
 
     multitasking_init();
@@ -47,5 +49,12 @@ int main(bootinfo_t* bootinfo){
 
     syscall_install();
 
-    while(1) asm("hlt");
+    char** argv = gen_argv("/bin/sh");
+    fs_node_t* file=kopen("/bin/sh");
+    int pid = spawn_elf(file,argv,NULL);
+
+    free(argv);
+    while(get_task_state(pid) != TASK_DEAD);
+    
+    while(1) asm volatile("hlt");
 }

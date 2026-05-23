@@ -1,3 +1,8 @@
 .vscode/c_cpp_properties.json
 .vscode/settings.json
 bin/*
+test
+newlib
+sysroot/usr/*
+sysroot/bin/*
+sysroot/a.out

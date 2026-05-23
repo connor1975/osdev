@@ -1,6 +1,7 @@
 #include <kernel/mm.h>
 #include <kernel/common.h>
 #include <kernel/multitasking.h>
+#include <kernel/gdt.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -80,15 +81,15 @@ int exec_elf(task_t* task, void* elf_data, char** argv, char** envp){
     memset(task->fxsave_region,0,512);
     task->cr3 = cr3;
     task->context.rflags = 0x200; // Interrupt enable
-    task->context.cs = 0x18 | 3;
-    task->context.ss = 0x20 | 3;
+    task->context.cs = USER_CODE | 3;
+    task->context.ss = USER_DATA | 3;
     task->user = 1;
     task->mmap_ptr = USER_MMAP_START;
     task->brk = USER_HEAP_START;
     task->brk_start = task->brk;
     task->brk_next_page = task->brk;
     task->context.rsp = (uint64_t)USER_STACK_TOP;
-    task->rsp0 = (uint64_t)phys_to_virt(allocate_frames(DEFAULT_STACK_SIZE_PAGES)) + (4096 * 4); // setup kernel stack
+    task->rsp0 = (uint64_t)phys_to_virt(allocate_frames(DEFAULT_STACK_SIZE_PAGES)) + (4096 * DEFAULT_STACK_SIZE_PAGES); // setup kernel stack
     void* stack_phys = allocate_frames(DEFAULT_STACK_SIZE_PAGES);
     map_pages(USER_STACK_TOP - (4096 * DEFAULT_STACK_SIZE_PAGES),stack_phys,PAGE_FLAG_RW | PAGE_FLAG_PRESENT | PAGE_FLAG_USER, phys_to_virt((void*)cr3),DEFAULT_STACK_SIZE_PAGES);
     
@@ -98,4 +99,26 @@ int exec_elf(task_t* task, void* elf_data, char** argv, char** envp){
     }
     push_args(task,i,argv,envp);    
     return 0;
+}
+
+// edits string in place
+char** gen_argv(char* string){
+    char** ptrs = malloc(sizeof(char*));
+    int size = sizeof(char*);
+    int i = 1;
+    ptrs[0] = string;
+    while(*string != 0){
+        if(*string == ' '){
+            size+=sizeof(char*);
+            ptrs = realloc(ptrs,size);
+            ptrs[i] = string+1;
+            i++;
+            *string = 0;
+        }
+        string++;
+    }
+    size+=sizeof(char*);
+    ptrs = realloc(ptrs,size);
+    ptrs[i] = 0;
+    return ptrs;
 }

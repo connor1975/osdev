@@ -83,6 +83,7 @@ void to_normal_filename(char* fat_name, char* dest);
 fs_node_t* fat_mount_partition(int disk_no, int partition_lba);
 
 struct fat_node_info{
+	uint32_t parent_dir_cluster;
     uint32_t starting_cluster;
     fs_node_t** children;
     int no_child;
@@ -102,6 +103,8 @@ typedef struct fat_mounted_volume{
 	int fat_version;
     int fat_index;
     void* fat_buffer;
+	uint32_t fat_size;
+	uint32_t cluster_size;
 	char volume_name[12];
 } fat_mounted_volume_t;
 

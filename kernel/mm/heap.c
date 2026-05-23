@@ -4,6 +4,7 @@
 #include <kernel/mm.h>
 #include <string.h>
 #include <kernel/spinlock.h>
+#include <kernel/common.h>
 
 // Simple heap implementation
 // some room for optimization
@@ -11,13 +12,15 @@
 atomic_flag heap_lock = ATOMIC_FLAG_INIT;
 
 #define HEAP_START_SIZE 4 * 1024 * 1024     // heap starts at 4 mb size but can grow
+#define BLOCK_MAGIC 0xDEADBEEF
 
 struct heap_block{
     struct heap_block* next;
     struct heap_block* prev;
     uint64_t size;
-    uint64_t free;
-};
+    uint32_t free;
+    uint32_t magic;
+}__attribute__((packed));
 
 struct heap_block* heap_start;
 struct heap_block* last_block;
@@ -54,6 +57,7 @@ void block_split(struct heap_block* block, int size){
     new_block->prev = block;
     new_block->free = 1;
     new_block->size = block->size - size - sizeof(struct heap_block);
+    new_block->magic = BLOCK_MAGIC;
     if(new_block->next == NULL) last_block = new_block;
     
     block->size = size;
@@ -71,6 +75,7 @@ void heap_expand(uint64_t size){
     new_block->size = (page_count * 4096) - sizeof(struct heap_block);
     new_block->free = 1;
     new_block->next = NULL;
+    new_block->magic = BLOCK_MAGIC;
     last_block->next = new_block;
     last_block = new_block;
     combine_free_back(new_block);
@@ -98,6 +103,7 @@ void* malloc(uint64_t size){
     spinlock_acquire(&heap_lock);
 
     void* ret = malloc_internal(size);
+    memset(ret,0,size);
 
     spinlock_release(&heap_lock);
     return ret;
@@ -137,6 +143,17 @@ void* calloc(uint64_t num, uint64_t size){
     void* ret = malloc(num * size);
     memset(ret,0,num * size);
     return ret;
+}
+
+void verify_heap_integrity(){
+    struct heap_block* cur = heap_start;
+    while(cur != NULL){
+        if(cur->magic != BLOCK_MAGIC){
+            panic("Heap corruption detected!");
+            return;
+        }
+        cur = cur->next;
+    }
 }
 
 void heap_init(){

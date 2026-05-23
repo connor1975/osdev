@@ -140,8 +140,8 @@ int create_kernel_task(void* func){
 
     memset(new_task->fxsave_region,0,512);
     memset((void*)&new_task->context,0,sizeof(struct interrupt_frame));
-    new_task->context.cs = 0x8;
-    new_task->context.ss = 0x10;
+    new_task->context.cs = KERNEL_CODE;
+    new_task->context.ss = KERNEL_DATA;
     new_task->context.rflags = 0x200; // Interrupt enable
     new_task->context.rsp = (uint64_t)phys_to_virt(allocate_frames(DEFAULT_STACK_SIZE_PAGES)) + (DEFAULT_STACK_SIZE_PAGES * 4096);
     new_task->context.rip = (uint64_t)func;
@@ -239,12 +239,12 @@ void kill_task(int pid, int exit_code){
     irq_disable();
     task_t* task = find_task(pid);
     task->state = TASK_DEAD;
-    irq_enable();
+    //if(task->user) free_process_memory(task->cr3);  cause of instability?
     task->exit_code = exit_code;
-    if(task->user) free_process_memory(task->cr3);
     for(int i = 0; i < MAX_OPEN_FILES; i++){
         if(task->open_files[i] != NULL) close_fs(task->open_files[i]->file);
     }
+    irq_enable();
     if(current_task->id == pid) while(1)asm volatile("hlt"); // wait for schedule
 }
 

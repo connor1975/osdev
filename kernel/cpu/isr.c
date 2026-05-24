@@ -30,6 +30,7 @@ void generic_exception_handler(struct interrupt_frame* regs){
 	if(current_task != NULL){
 		if(current_task->user){
 			printf("Exception %d in task %d, ending task\n",regs->isr_number,current_task->id);
+			print_regs(regs);
 			irq_enable();
 			task_exit(1);
 			return;

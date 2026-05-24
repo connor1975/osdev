@@ -16,8 +16,36 @@ uint64_t sys_fork(){
     return task_fork();
 }
 
+char** copy_args_to_kernel(char** argv){
+    if(argv == NULL) return NULL;
+    int argc = 0;
+    while(argv[argc] != NULL) argc++;
+    
+    char** kargv = malloc((argc + 1) * sizeof(char*));
+    for(int i = 0; i < argc; i++){
+        kargv[i] = malloc(strlen(argv[i]) + 1);
+        strcpy(kargv[i], argv[i]);
+    }
+    kargv[argc] = NULL;
+    return kargv;
+}
+
+void free_args(char** argv){
+    if(argv == NULL) return;
+    int i = 0;
+    while(argv[i] != NULL){
+        free(argv[i]);
+        i++;
+    }
+    free(argv);
+}
+
 uint64_t sys_execve(char* pathname, char** argv, char** envp){
     irq_disable();
+
+    char** kargv = copy_args_to_kernel(argv);
+    char** kenvp = copy_args_to_kernel(envp);
+
     fs_node_t* file = kopen(pathname);
     if(file == NULL) {
         return -ENOENT;
@@ -27,13 +55,16 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
 
     void* buffer = malloc(file->length);
     read_fs(file,0,file->length,buffer);
-    int ret = exec_elf(task,buffer,argv,envp);
+    int ret = exec_elf(task,buffer,kargv,kenvp);
     if(ret < 0) return ret;
 
     memcpy((void*)syscall_context,(void*)&task->context,sizeof(struct interrupt_frame));
     switch_pml4((void*)task->cr3);
     tss_set_kernel_stack((void*)task->rsp0);
     irq_enable();
+
+    free_args(kargv);
+    free_args(kenvp);
     return 0;
 }
 

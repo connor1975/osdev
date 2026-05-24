@@ -7,6 +7,7 @@
 fs_node_t *fs_root = 0;
 
 int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
+    if(node == NULL) return 0;
     if(node->ioctl != 0)
         return node->ioctl(node,request,argp);
     else
@@ -14,6 +15,7 @@ int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
 }
 
 uint32_t read_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffer){
+    if(node == NULL) return 0;
     if (node->read != 0)
         return node->read(node, offset, size, buffer);
     else
@@ -21,6 +23,7 @@ uint32_t read_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffe
 }
 
 uint32_t write_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffer){
+    if(node == NULL) return 0;
     if (node->write != 0)
         return node->write(node, offset, size, buffer);
     else
@@ -28,11 +31,13 @@ uint32_t write_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buff
 }
 
 void open_fs(fs_node_t *node, uint8_t read, uint8_t write){
+    if(node == NULL) return;
     if (node->open != 0)
         return node->open(node);
 }
 
 void close_fs(fs_node_t *node){
+    if(node == NULL) return;
     if (node->close != 0)
         return node->close(node);
 }

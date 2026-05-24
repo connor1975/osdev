@@ -2,14 +2,18 @@
 #include <kernel/common.h>
 #include <kernel/multitasking.h>
 #include <kernel/mm.h>
+#include <string.h>
 #include <stdint.h>
 
 uint64_t sys_brk(uint64_t addr){
+    irq_disable();
     if(addr == 0) return (uint64_t)current_task->brk;
     if(addr >= (uint64_t)current_task->brk_next_page && addr > (uint64_t)current_task->brk){
         uint64_t pagecount = ((addr - (uint64_t)current_task->brk_next_page) + 4095) / 4096;
         for(int i = 0; i <= pagecount; i++){
-            map_page(current_task->brk_next_page,allocate_frame(), PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_USER,phys_to_virt((void*)current_task->cr3));
+            void* phys = allocate_frame();
+            memset(phys_to_virt(phys),0,4096);
+            map_page(current_task->brk_next_page,phys, PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_USER,phys_to_virt((void*)current_task->cr3));
             current_task->brk_next_page += 4096;
         }
     }

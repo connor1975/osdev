@@ -164,6 +164,7 @@ void heap_init(){
     heap_start = (struct heap_block*)KERNEL_HEAP_ADDR;
     heap_start->next = NULL;
     heap_start->prev = NULL;
+    heap_start->magic = BLOCK_MAGIC;
     heap_start->size = HEAP_START_SIZE - sizeof(struct heap_block);
     heap_start->free = 1;
     last_block = heap_start;

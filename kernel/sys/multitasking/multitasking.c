@@ -98,7 +98,7 @@ int task_close_file(int fd){
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[fd] == NULL) return -EBADF;
     struct file_descriptor* file_descriptor = current_task->open_files[fd];
-    if(file_descriptor->refcount != 0){
+    if(file_descriptor->refcount > 1){
         file_descriptor->refcount--;
         return 0;
     }
@@ -239,10 +239,10 @@ void kill_task(int pid, int exit_code){
     irq_disable();
     task_t* task = find_task(pid);
     task->state = TASK_DEAD;
-    //if(task->user) free_process_memory(task->cr3);  cause of instability?
+    if(task->user) free_process_memory(task->cr3);
     task->exit_code = exit_code;
     for(int i = 0; i < MAX_OPEN_FILES; i++){
-        if(task->open_files[i] != NULL) close_fs(task->open_files[i]->file);
+        task_close_file(i);
     }
     irq_enable();
     if(current_task->id == pid) while(1)asm volatile("hlt"); // wait for schedule

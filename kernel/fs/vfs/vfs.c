@@ -58,7 +58,16 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name){
         return 0;
 }
 
-fs_node_t* find_file(char* path){
+void create_file_fs(fs_node_t* node, char* name){
+    if(node->flags & FS_MOUNTPOINT) node = node->ptr;
+    if (node->flags & FS_DIRECTORY && node->create_file != 0)
+        return node->create_file(node,name);
+}
+
+fs_node_t* find_file(char* file_path){
+    char* path = malloc(strlen(file_path) + 1);
+    strcpy(path,file_path);
+    path[strlen(file_path)] = '\0';
     if(strcmp(path, "") == 0) return NULL;
     char* cwd;
     if(current_task != NULL) cwd = current_task->cwd;
@@ -70,10 +79,50 @@ fs_node_t* find_file(char* path){
     char* token = strtok_r(safepath,"/", &saveptr);
     while(token != NULL){
         cur = finddir_fs(cur,token);
-        if(cur == NULL) return NULL;
+        if(cur == NULL) {
+            return NULL;
+        }
         token = strtok_r(NULL,"/", &saveptr);
     }
+    free(path);
     return cur;
+}
+
+fs_node_t* find_file_dir(char* file_path){
+    if (!file_path || file_path[0] == '\0')
+        return NULL;
+
+    char* cwd;
+    if(current_task != NULL) cwd = current_task->cwd;
+    else cwd = "/";
+    char* abs = vfs_absolute_path(cwd, file_path);
+
+    fs_node_t* cur = fs_root;
+
+    char* saveptr;
+    char* token = strtok_r(abs, "/", &saveptr);
+
+    while (token != NULL){
+        fs_node_t* next = finddir_fs(cur, token);
+        if (next == NULL)
+            break;
+        cur = next;
+        token = strtok_r(NULL, "/", &saveptr);
+    }
+    free(abs);
+    return cur;
+}
+
+char* get_filename_from_path(char* path){
+    if (!path || path[0] == '\0')
+        return NULL;
+
+    char* last = path;
+    for (char* p = path; *p; p++){
+        if (*p == '/')
+            last = p + 1;
+    }
+    return last;
 }
 
 fs_node_t* kopen(char* path){

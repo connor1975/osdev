@@ -29,7 +29,10 @@ uint64_t sys_read(int fd, char* buffer, uint64_t count){
     return ret;
 }
 
-uint64_t sys_open(char* path){
+uint64_t sys_open(char* path, int flags){
+    if(flags & O_CREAT && find_file(path) == NULL){
+        create_file_fs(find_file_dir(path),get_filename_from_path(path));
+    }
     return task_open_file(kopen(path),(task_t*)current_task);
 }
 

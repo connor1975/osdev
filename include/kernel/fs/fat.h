@@ -81,6 +81,7 @@ char* to_fat_filename(char* filename);
 void to_normal_filename(char* fat_name, char* dest);
 
 fs_node_t* fat_mount_partition(int disk_no, int partition_lba);
+uint32_t fat_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
 
 struct fat_node_info{
 	uint32_t parent_dir_cluster;

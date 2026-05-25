@@ -16,6 +16,7 @@ typedef uint32_t (*read_type_t)(struct fs_node*,uint32_t,uint32_t,uint8_t*);
 typedef uint32_t (*write_type_t)(struct fs_node*,uint32_t,uint32_t,uint8_t*);
 typedef void (*open_type_t)(struct fs_node*);
 typedef void (*close_type_t)(struct fs_node*);
+typedef void (*create_file_type_t)(struct fs_node*, char* name);
 typedef int (*ioctl_type_t)(struct fs_node *, unsigned long request, void* argp);
 typedef struct dirent * (*readdir_type_t)(struct fs_node*,uint32_t);
 typedef struct fs_node * (*finddir_type_t)(struct fs_node*,char *name);
@@ -36,6 +37,7 @@ typedef struct fs_node
     close_type_t close;
     readdir_type_t readdir;
     finddir_type_t finddir;
+    create_file_type_t create_file;
     ioctl_type_t ioctl;
     struct fs_node *ptr; // Used by mountpoints and symlinks.
 } fs_node_t;
@@ -59,13 +61,31 @@ void open_fs(fs_node_t *node, uint8_t read, uint8_t write);
 void close_fs(fs_node_t *node);
 struct dirent *readdir_fs(fs_node_t *node, uint32_t index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
+void create_file_fs(fs_node_t* node, char* name);
 int ioctl_fs(fs_node_t *node, unsigned long request, void * argp);
 fs_node_t* find_file(char* path);
+fs_node_t* find_file_dir(char* path);
+char* get_filename_from_path(char* path);
 
 void devfs_init();
 void dev_add_node(fs_node_t* node);
 
 void zero_init();
+
+// use newlibs default values until we add our own fnctl.h to newlib
+
+#define	_FREAD		0x0001	/* read enabled */
+#define	_FWRITE		0x0002	/* write enabled */
+#define	_FAPPEND	0x0008	/* append (writes guaranteed at the end) */
+#define	_FCREAT		0x0200	/* open with file create */
+#define	_FTRUNC		0x0400	/* open with truncation */
+
+#define	O_RDONLY	0
+#define	O_WRONLY	1
+#define	O_RDWR		2
+#define	O_APPEND	_FAPPEND
+#define	O_CREAT		_FCREAT
+#define	O_TRUNC		_FTRUNC
 
 struct file_descriptor{
     fs_node_t* file;

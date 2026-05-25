@@ -1,12 +1,15 @@
 #include <kernel/fs/vfs.h>
 #include <kernel/common.h>
 #include <kernel/fs/fat.h>
+#include <kernel/time.h>
 #include <kernel/disk.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
 // FAT32 FAT16 and FAT12 driver
+// write features currently fat32 exclusive
+// write still experimental
 
 #define FAT_BUFFER_SIZE 16
 
@@ -229,6 +232,88 @@ uint32_t fat_append_cluster32(fat_mounted_volume_t* volume, uint32_t prev_cluste
     return new_cluster;
 }
 
+void fat_create_file(fs_node_t* directory, char* filename){
+    fat_mounted_volume_t* volume = (fat_mounted_volume_t*)directory->impl;
+    struct fat_node_info* fatinfo = volume->fileinfo[directory->inode];
+    
+    void* buffer = NULL;
+    uint64_t buffer_size = 0;
+    uint32_t current_cluster = fatinfo->starting_cluster;
+    uint32_t last_cluster = 0;
+    int i = 0;
+    while(!is_end_of_chain(volume,current_cluster)){
+        buffer_size +=(volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector);
+        buffer = realloc(buffer,buffer_size);
+        fat_volume_read_sectors(volume,cluster_to_lba(volume,current_cluster),volume->bootsector->sectors_per_cluster,buffer + ((volume->bootsector->sectors_per_cluster * volume->bootsector->bytes_per_sector) * i));
+        last_cluster = current_cluster;
+        current_cluster = get_next_cluster(volume,current_cluster);
+        i++;
+    }
+    uint32_t entry_count = (volume->bootsector->sectors_per_cluster * 16) * i;
+    uint32_t file_index = 0;
+    uint32_t new_starting_cluster = 0;
+    int found_free_entry = 0;
+    for(int i = 0; i < entry_count; i++){
+        struct fat_dirent* dirent = (struct fat_dirent*)(buffer + (i * sizeof(struct fat_dirent)));
+        if(dirent->name[0] == 0 || dirent->name[0] == 0xE5){
+            memset(dirent,0,sizeof(struct fat_dirent));
+            memcpy(dirent->name,to_fat_filename(filename),11);
+            dirent->crt_date = (rtc_get_day_of_month() & 0b11111) | ((rtc_get_month() & 0b1111) << 5) | (((rtc_get_year() - 1980) & 0b1111111) << 9);
+            dirent->crt_time = (((rtc_get_seconds() / 2)) | ((rtc_get_minutes() << 5)) | (rtc_get_hours() << 11));
+
+            new_starting_cluster = fat_get_free_cluster32(volume);
+            fat_set_entry32(volume, new_starting_cluster, FAT32_CHAIN_END);
+
+            dirent->cluster_low = new_starting_cluster & 0xFFFF;
+            dirent->cluster_high = (new_starting_cluster >> 16) & 0xFFFF;
+
+            file_index = i;
+            found_free_entry = 1;
+            break;
+        }
+    }
+
+    if(found_free_entry == 0){
+        uint32_t new_cluster = fat_append_cluster32(volume,last_cluster);
+        void* zeroed = calloc(1,volume->cluster_size);
+        fat_volume_write_sectors(volume,cluster_to_lba(volume,new_cluster),volume->bootsector->sectors_per_cluster,zeroed);
+        free(buffer);
+        return fat_create_file(directory,filename);
+    }
+
+    int cluster_offset = (file_index * sizeof(struct fat_dirent)) / volume->cluster_size;
+    int byte_offset = (file_index * sizeof(struct fat_dirent)) % volume->cluster_size;
+
+    current_cluster = fatinfo->starting_cluster;
+    for(int i = 0; i < cluster_offset; i++){
+        current_cluster = get_next_cluster(volume, current_cluster);
+    }
+
+    fat_volume_write(volume, (cluster_to_lba(volume,(current_cluster)) * volume->bootsector->bytes_per_sector) + byte_offset, sizeof(struct fat_dirent), buffer + (cluster_offset * volume->cluster_size) + byte_offset);
+    
+    fs_node_t* new_file = calloc(1,sizeof(fs_node_t));
+    strcpy(new_file->name,filename);
+    new_file->flags = FS_FILE;
+    new_file->inode = volume->next_inode++;
+    new_file->impl = directory->impl;
+    new_file->read = &fat_read;
+    new_file->write = &fat_write;
+    volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
+    volume->fileinfo[new_file->inode] = malloc(sizeof(struct fat_node_info));
+
+    struct fat_node_info* fat_extras = volume->fileinfo[new_file->inode];
+    fat_extras->starting_cluster = new_starting_cluster;
+    fat_extras->children = 0;
+    fat_extras->no_child = 0;
+    fat_extras->parent_dir_cluster = fatinfo->starting_cluster;
+
+    fatinfo->no_child++;
+    fatinfo->children = realloc(fatinfo->children,sizeof(void*) * fatinfo->no_child);
+    fatinfo->children[fatinfo->no_child - 1] = new_file;
+    
+    free(buffer);
+}
+
 // fat32 only for now
 void fat_update_file_size(fat_mounted_volume_t* volume, fs_node_t* file, uint32_t new_size){
     struct fat_node_info* fatinfo = volume->fileinfo[file->inode];
@@ -402,6 +487,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             new_node->ioctl = 0;
             new_node->readdir = &fat_readdir;
             new_node->finddir = &fat_finddir;
+            new_node->create_file = &fat_create_file;
             new_node->ptr = 0;
             new_node->inode = volume->next_inode++;
             void* fs_extra = malloc(sizeof(struct fat_node_info));
@@ -469,6 +555,7 @@ fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
     vol_root->write = 0;
     vol_root->open = 0;
     vol_root->close = 0;
+    vol_root->create_file = &fat_create_file;
     vol_root->readdir = &fat_readdir;
     vol_root->finddir = &fat_finddir;
     vol_root->ptr = 0;

@@ -23,10 +23,8 @@ uint64_t sys_pipe(int* fildes){
     if(fildes == NULL) return -EINVAL;
 
     fs_node_t* pipe = create_pipe(DEFAULT_PIPE_SIZE);
-    int read_fd = task_open_file(pipe,(task_t*)current_task);
-    int write_fd = task_open_file(pipe,(task_t*)current_task);
-    open_fs(pipe,1,0);
-    open_fs(pipe,0,1);
+    int read_fd = task_open_file(pipe,(task_t*)current_task,O_RDONLY);
+    int write_fd = task_open_file(pipe,(task_t*)current_task,O_WRONLY);
     fildes[0] = read_fd;
     fildes[1] = write_fd;
     return 0;

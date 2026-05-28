@@ -51,7 +51,7 @@ void kill_task(int pid, int exit_code);
 void push_args(task_t* task, int argc, char** argv,char** envp);
 int task_chdir(char* path);
 void task_exit(int exit_code);
-int task_open_file(fs_node_t* file,task_t*);
+int task_open_file(fs_node_t* file,task_t*, int flags);
 int task_fork();
 void add_task(task_t* task);
 task_t* task_create_child();

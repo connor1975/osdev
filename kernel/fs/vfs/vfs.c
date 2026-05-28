@@ -42,6 +42,12 @@ void close_fs(fs_node_t *node){
         return node->close(node);
 }
 
+void truncate_fs(fs_node_t* node, int length){
+    if(node == NULL) return;
+    if(node->truncate != 0)
+        node->truncate(node,length);
+}
+
 struct dirent *readdir_fs(fs_node_t *node, uint32_t index){
     if(node->flags & FS_MOUNTPOINT) node = node->ptr;
     if (node->flags == FS_DIRECTORY && node->readdir != 0 )

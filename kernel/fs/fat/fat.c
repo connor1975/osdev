@@ -13,6 +13,8 @@
 
 #define FAT_BUFFER_SIZE 16
 
+void fat_truncate(fs_node_t* file, int length);
+
 void fat_volume_read_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
     read_disk(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
 }
@@ -157,6 +159,7 @@ void fat_read_bootsector(fat_mounted_volume_t* volume){
 }
 
 uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+    if(node->length == 0) return 0;
     if(size == 0) return 0;
     if(offset >= node->length) return 0;
     if(offset + size >= node->length){
@@ -300,6 +303,7 @@ void fat_create_file(fs_node_t* directory, char* filename){
     new_file->impl = directory->impl;
     new_file->read = &fat_read;
     new_file->write = &fat_write;
+    new_file->truncate = &fat_truncate;
     volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
     volume->fileinfo[new_file->inode] = malloc(sizeof(struct fat_node_info));
 
@@ -435,6 +439,12 @@ fs_node_t* fat_finddir(fs_node_t *node, char *name){
     return NULL;
 }
 
+void fat_truncate(fs_node_t* file, int length){
+    file->length = length;
+    fat_mounted_volume_t* volume = (fat_mounted_volume_t*)file->impl;
+    fat_update_file_size(volume,file,length);
+}
+
 void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t* parent, uint32_t dir_cluster){
     int entry_count = 0;
     int num_files = 2;
@@ -490,6 +500,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             new_node->readdir = &fat_readdir;
             new_node->finddir = &fat_finddir;
             new_node->create_file = &fat_create_file;
+            new_node->truncate = 0;
             new_node->ptr = 0;
             new_node->inode = volume->next_inode++;
             void* fs_extra = malloc(sizeof(struct fat_node_info));
@@ -503,6 +514,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             new_node->flags = FS_FILE;
             new_node->read = &fat_read;
             new_node->write = &fat_write;
+            new_node->truncate = &fat_truncate;
             new_node->ioctl = 0;
             new_node->readdir = 0;
             new_node->finddir = 0;

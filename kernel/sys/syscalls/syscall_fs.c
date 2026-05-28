@@ -12,22 +12,36 @@
 uint64_t sys_write(int fd, char* buffer, uint64_t count){
     irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
-    if(current_task->open_files[fd] == NULL) return -EBADF;
-    fs_node_t* file = current_task->open_files[fd]->file;
+    struct file_descriptor* file_descriptor = current_task->open_files[fd];
+    if(file_descriptor == NULL) return -EBADF;
+    int mode = file_descriptor->flags & 0x3;
+    if(mode == O_RDONLY) return -EBADF;
+
+    if(file_descriptor->flags & O_APPEND){
+        file_descriptor->offset = file_descriptor->file->length;
+    }
+
+    fs_node_t* file = file_descriptor->file;
     if(buffer == NULL) return -EFAULT;
-    uint32_t ret = write_fs(file,current_task->open_files[fd]->offset,count,(uint8_t*)buffer);
-    current_task->open_files[fd]->offset+=ret;
+    uint32_t ret = write_fs(file,file_descriptor->offset,count,(uint8_t*)buffer);
+    file_descriptor->offset+=ret;
+    
     return ret;
 }
 
 uint64_t sys_read(int fd, char* buffer, uint64_t count){
     irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
-    if(current_task->open_files[fd] == NULL) return -EBADF;
-    fs_node_t* file = current_task->open_files[fd]->file;
+    struct file_descriptor* file_descriptor = current_task->open_files[fd];
+    if(file_descriptor == NULL) return -EBADF;
+    int mode = file_descriptor->flags & 0x3;
+    if(mode == O_WRONLY) return -EBADF;
+    
+    fs_node_t* file = file_descriptor->file;
     if(buffer == NULL) return -EFAULT;
-    uint32_t ret = read_fs(file,current_task->open_files[fd]->offset,count,(void*)buffer);
-    current_task->open_files[fd]->offset+=ret;
+    uint32_t ret = read_fs(file,file_descriptor->offset,count,(void*)buffer);
+    file_descriptor->offset+=ret;
+
     return ret;
 }
 
@@ -36,7 +50,7 @@ uint64_t sys_open(char* path, int flags){
     if(flags & O_CREAT && find_file(path) == NULL){
         create_file_fs(find_file_dir(path),get_filename_from_path(path));
     }
-    return task_open_file(kopen(path),(task_t*)current_task);
+    return task_open_file(find_file(path),(task_t*)current_task,flags);
 }
 
 uint64_t sys_close(int fd){

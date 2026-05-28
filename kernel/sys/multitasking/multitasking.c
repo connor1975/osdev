@@ -81,16 +81,21 @@ int task_chdir(char* path){
     return 0;
 }
 
-int task_open_file(fs_node_t* file, task_t* task){
+int task_open_file(fs_node_t* file, task_t* task, int flags){
     if(file == NULL) return -ENOENT;
     int i = 0;
     for(i = 0; i < MAX_OPEN_FILES; i++){
         if(task->open_files[i] == NULL) break;
     }
+    open_fs(file,flags & O_RDONLY, flags & O_WRONLY);
     task->open_files[i] = malloc(sizeof(struct file_descriptor));
     task->open_files[i]->file = file;
     task->open_files[i]->offset = 0;
     task->open_files[i]->refcount = 1;
+    task->open_files[i]->flags = flags;
+    if(flags & O_TRUNC){
+        truncate_fs(file,0); 
+    }
     return i;
 }
 
@@ -276,9 +281,9 @@ void multitasking_init(){
     kernel_task.wait_handled = 0;
 
     memset(&kernel_task.open_files,0,sizeof(struct file_descriptor*) * MAX_OPEN_FILES);
-    task_open_file(kopen("/dev/stdin"),&kernel_task);
-    task_open_file(kopen("/dev/stdout"),&kernel_task);
-    task_open_file(kopen("/dev/stderr"),&kernel_task);
+    task_open_file(find_file("/dev/stdin"),&kernel_task, O_RDONLY);
+    task_open_file(find_file("/dev/stdout"),&kernel_task, O_WRONLY);
+    task_open_file(find_file("/dev/stderr"),&kernel_task, O_WRONLY);
 
     int divisor = 1193180 / 1000;
     outb(0x43, 0x36);

@@ -19,19 +19,17 @@ int pipe_read(fs_node_t* node, uint32_t offset, uint32_t size, void* buffer) {
     struct pipe* pipe = (void*)node->ptr;
     if(pipe == NULL || buffer == NULL) return -1;
     uint8_t* data = (uint8_t*)buffer;
-    spinlock_acquire(&pipe->pipe_lock);
     if(pipe->current_len == 0){
-        spinlock_release(&pipe->pipe_lock);        
-        while(pipe->current_len == 0) {};
-        spinlock_acquire(&pipe->pipe_lock);
+        while(pipe->current_len == 0) yield();
     }
     for(int i = 0; i < size; i++) {
         if(pipe->current_len == 0) return i;
+        spinlock_acquire(&pipe->pipe_lock);
         if(buffer != NULL) data[i] = pipe->buffer[pipe->read_off];
         pipe->read_off = (pipe->read_off + 1) % pipe->size;
         pipe->current_len--;
+        spinlock_release(&pipe->pipe_lock);
     }
-    spinlock_release(&pipe->pipe_lock);
     return size;
 }
 
@@ -39,18 +37,16 @@ int pipe_write(fs_node_t* node, uint32_t offset, uint32_t size, void* buffer) {
     struct pipe* pipe = (void*)node->ptr;
     if(pipe == NULL || buffer == NULL) return -1;
     const uint8_t* data = (uint8_t*)buffer;
-    spinlock_acquire(&pipe->pipe_lock);
     for(int i = 0; i < size; i++) {
         if(pipe->current_len == pipe->size){
-            spinlock_release(&pipe->pipe_lock);
-            while(pipe->current_len == pipe->size) {};
-            spinlock_acquire(&pipe->pipe_lock);
+            while(pipe->current_len == pipe->size) yield();
         }
+        spinlock_acquire(&pipe->pipe_lock);
         pipe->buffer[pipe->write_off] = data[i];
         pipe->write_off = (pipe->write_off + 1) % pipe->size;
         pipe->current_len++;
+        spinlock_release(&pipe->pipe_lock);
     }
-    spinlock_release(&pipe->pipe_lock);
     return size;
 }
 

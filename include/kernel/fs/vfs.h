@@ -20,6 +20,7 @@ typedef void (*create_file_type_t)(struct fs_node*, char* name);
 typedef int (*ioctl_type_t)(struct fs_node *, unsigned long request, void* argp);
 typedef struct dirent * (*readdir_type_t)(struct fs_node*,uint32_t);
 typedef struct fs_node * (*finddir_type_t)(struct fs_node*,char *name);
+typedef void (*truncate_type_t)(struct fs_node*,int length);
 
 typedef struct fs_node
 {
@@ -38,6 +39,7 @@ typedef struct fs_node
     readdir_type_t readdir;
     finddir_type_t finddir;
     create_file_type_t create_file;
+    truncate_type_t truncate;
     ioctl_type_t ioctl;
     struct fs_node *ptr; // Used by mountpoints and symlinks.
 } fs_node_t;
@@ -59,6 +61,7 @@ uint32_t read_fs(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffe
 uint32_t write_fs(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer);
 void open_fs(fs_node_t *node, uint8_t read, uint8_t write);
 void close_fs(fs_node_t *node);
+void truncate_fs(fs_node_t* node, int length);
 struct dirent *readdir_fs(fs_node_t *node, uint32_t index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
 void create_file_fs(fs_node_t* node, char* name);
@@ -90,6 +93,7 @@ void zero_init();
 struct file_descriptor{
     fs_node_t* file;
     uint64_t offset;
+    uint32_t flags;
     int refcount;
 };
 

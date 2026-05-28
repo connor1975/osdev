@@ -43,6 +43,7 @@ void tty_init();
 
 void devfs_init(){
     dev_node = malloc(sizeof(fs_node_t));
+    memset(dev_node,0,sizeof(fs_node_t));
     dev_node->mask = dev_node->uid = dev_node->gid = dev_node->inode = dev_node->length = 0;
     dev_node->flags = FS_DIRECTORY;
     dev_node->read = 0;

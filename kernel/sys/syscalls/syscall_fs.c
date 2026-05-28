@@ -58,6 +58,21 @@ uint64_t sys_close(int fd){
     return task_close_file(fd);
 }
 
+uint64_t sys_truncate(const char* path, uint64_t length){
+    fs_node_t* file = find_file((char*)path);
+    if(file == NULL) return -ENOENT;
+    truncate_fs(file,length);
+    return 0;
+}
+
+uint64_t sys_ftruncate(uint32_t fd, uint64_t length){
+    if(fd >= MAX_OPEN_FILES) return -EBADF;
+    struct file_descriptor* file_descriptor = current_task->open_files[fd];
+    if(file_descriptor == NULL) return -EBADF;
+    truncate_fs(file_descriptor->file,length);
+    return 0;
+}
+
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2

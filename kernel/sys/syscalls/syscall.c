@@ -39,6 +39,8 @@ extern uint64_t sys_dup(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, 
 extern uint64_t sys_dup2(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_lstat(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_uname(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_truncate(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_ftruncate(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
 syscall syscall_table[] = {
     (syscall)sys_exit, // 0
@@ -72,6 +74,8 @@ syscall syscall_table[] = {
     (syscall)sys_dup2, // 28
     (syscall)sys_lstat, // 29
     (syscall)sys_uname, // 30
+    (syscall)sys_truncate, // 31
+    (syscall)sys_ftruncate, // 32
     0
 };
 

@@ -16,6 +16,21 @@ ahci_device_t** ahci_devices = NULL;
 #define HBA_PxCMD_FR    0x4000
 #define HBA_PxCMD_CR    0x8000
 
+void ata_string_convert(char* str){
+    for (int i = 0; i < 40 - 1; i += 2) {
+        char temp = str[i];
+        str[i] = str[i + 1];
+        str[i + 1] = temp;
+    }
+
+    for (int i = 0; i < 40 - 1; i++) {
+        if (str[i] == ' ' && str[i + 1] == ' ') {
+            str[i + 2] = '\0';
+            break;
+        }
+    }
+}
+
 // Start command engine
 void start_cmd(hba_port_t* port)
 {

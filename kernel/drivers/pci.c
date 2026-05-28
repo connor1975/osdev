@@ -83,7 +83,8 @@ void init_pci_devices(){
                     uint16_t class = (val2 >> 24);
 
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_AHCI) ahci_init(b,d,f);
-                    if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) ata_init(b,d,f);
+                    // soon implement a real ide driver to replace old buggy ata pio
+                    if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) panic("IDE is currently unsupported, please configure your virtual machine or bios to use AHCI");
                     if(class == PCI_CLASS_NETWORK_CONTROLLER && subclass == PCI_SUBCLASS_NETWORK_ETHERNET) {
                         // let the drivers themselves figure out which one they are
                         rtl8169_init(b,d,f);

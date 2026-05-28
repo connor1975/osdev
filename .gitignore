@@ -3,6 +3,4 @@
 bin/*
 test
 newlib
-sysroot/usr/*
-sysroot/bin/*
-sysroot/a.out
+sysroot/*

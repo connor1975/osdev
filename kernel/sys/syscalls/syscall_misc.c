@@ -19,6 +19,7 @@ uint64_t sys_gettimeofday(struct timeval* tv, void* tz){
 }
 
 uint64_t sys_pipe(int* fildes){
+    irq_enable();
     if(fildes == NULL) return -EINVAL;
 
     fs_node_t* pipe = create_pipe(DEFAULT_PIPE_SIZE);

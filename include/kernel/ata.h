@@ -26,10 +26,6 @@ struct ata_identity {
         uint16_t ignore_e[152]; /* words 104-255 */
 };
 
-void ata_pio28_read(int secondary, int slave, uint32_t lba, uint16_t sector_count,void* buffer);
-void ata_pio28_write(int secondary, int slave, uint32_t lba, uint16_t sector_count,void* buffer);
-int ata_identify(int secondary, int slave, void* buffer);
-void ata_init(uint8_t bus, uint8_t dev, uint8_t func);
 void ata_string_convert(char* str);
 
 #endif

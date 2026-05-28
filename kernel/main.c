@@ -51,10 +51,7 @@ int main(bootinfo_t* bootinfo){
 
     char** argv = gen_argv("/bin/sh");
     fs_node_t* file=kopen("/bin/sh");
-    int pid = spawn_elf(file,argv,NULL);
-
-    free(argv);
-    while(get_task_state(pid) != TASK_DEAD);
+    spawn_elf(file,argv,NULL);
     
     while(1) asm volatile("hlt");
 }

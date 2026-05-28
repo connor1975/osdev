@@ -81,7 +81,6 @@ volatile struct interrupt_frame* syscall_context = NULL;
 
 void syscall_handler(struct interrupt_frame* regs){
     syscall_context = regs;
-    irq_enable();
     if(regs->rax < num_syscalls){
         regs->rax = syscall_table[regs->rax](regs->rdi,regs->rsi,regs->rdx,regs->r10,regs->r8,regs->r9);
         return;

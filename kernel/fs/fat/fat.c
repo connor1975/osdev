@@ -157,6 +157,7 @@ void fat_read_bootsector(fat_mounted_volume_t* volume){
 }
 
 uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+    if(size == 0) return 0;
     if(offset >= node->length) return 0;
     if(offset + size >= node->length){
         size = node->length - offset;
@@ -177,13 +178,14 @@ uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
 
     uint32_t end_cluster = (offset + size - 1) / volume->cluster_size;
     uint32_t cluster_count = end_cluster - cluster_offset + 1;    
-    void* clusterbuffer = malloc((volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster) * cluster_count);
+    void* clusterbuffer = malloc((volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster) * (cluster_count + 1));
 
     int i = 0;
-    while(!is_end_of_chain(volume,current_cluster) && i < cluster_count){
+    while(i < cluster_count){
         fat_volume_read_sectors(volume,cluster_to_lba(volume,current_cluster),volume->bootsector->sectors_per_cluster,clusterbuffer + (i * (volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster)));
         i++;
         current_cluster = get_next_cluster(volume,current_cluster);
+        if(is_end_of_chain(volume,current_cluster)) break;
     }
 
     memcpy(buffer,clusterbuffer + byte_offset,size);

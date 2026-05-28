@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 uint64_t sys_brk(uint64_t addr){
-    irq_disable();
     if(addr == 0) return (uint64_t)current_task->brk;
     if(addr >= (uint64_t)current_task->brk_next_page && addr > (uint64_t)current_task->brk){
         uint64_t pagecount = ((addr - (uint64_t)current_task->brk_next_page) + 4095) / 4096;

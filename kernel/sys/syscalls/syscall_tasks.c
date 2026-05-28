@@ -12,7 +12,6 @@
 #include <stdint.h>
 
 uint64_t sys_fork(){
-    irq_disable();
     return task_fork();
 }
 
@@ -41,8 +40,6 @@ void free_args(char** argv){
 }
 
 uint64_t sys_execve(char* pathname, char** argv, char** envp){
-    irq_disable();
-
     char** kargv = copy_args_to_kernel(argv);
     char** kenvp = copy_args_to_kernel(envp);
 
@@ -61,7 +58,6 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
     memcpy((void*)syscall_context,(void*)&task->context,sizeof(struct interrupt_frame));
     switch_pml4((void*)task->cr3);
     tss_set_kernel_stack((void*)task->rsp0);
-    irq_enable();
 
     free_args(kargv);
     free_args(kenvp);
@@ -69,6 +65,7 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
 }
 
 uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
+    irq_enable();
     int state;
     if(pid > 0) {
         while((state = get_task_state(pid)) != TASK_DEAD);

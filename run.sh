@@ -1,1 +1,1 @@
-qemu-system-x86_64 -hda bin/os.img -monitor stdio -m 512M
+qemu-system-x86_64 -hda bin/os.img -monitor stdio -m 512M -machine q35

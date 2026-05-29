@@ -26,6 +26,7 @@ const char scanmap_shifted[128] = {
 };
 
 volatile int shifting = 0;
+volatile int ctrl_pressed = 0;
 
 #define BUFFER_SIZE 16
 
@@ -57,7 +58,13 @@ void keyboard_irq_handler(struct interrupt_frame* frame){
         case SHIFT_RELEASED:
         shifting = 0;
         break;
-    
+        case CTRL_PRESSED:
+        ctrl_pressed = 1;
+        break;
+        case CTRL_RELEASED:
+        ctrl_pressed = 0;
+        break;
+
         default:
             if(scancode < 0x60){
                 char c;
@@ -67,6 +74,13 @@ void keyboard_irq_handler(struct interrupt_frame* frame){
                     c = scanmap[scancode];
                 }
                 input_event.ascii = c;
+
+                if(ctrl_pressed) {
+                    input_event.ctrl_pressed = 1;
+                }else{
+                    input_event.ctrl_pressed = 0;
+                }
+                
                 tty_handle_input(input_event);
             }
             break;

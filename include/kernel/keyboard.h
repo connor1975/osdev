@@ -20,6 +20,7 @@
 
 typedef struct input_event{
     uint8_t ascii;
+    int ctrl_pressed;
     uint8_t scancode;
 } input_event_t;
 

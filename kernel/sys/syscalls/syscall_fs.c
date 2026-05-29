@@ -73,6 +73,26 @@ uint64_t sys_ftruncate(uint32_t fd, uint64_t length){
     return 0;
 }
 
+uint64_t sys_unlink(char* name){
+    return -ENOSYS;
+}
+
+uint64_t sys_link(char *oldname,char *newname){
+    return -ENOSYS;
+}
+
+uint64_t sys_mkdir(const char*pathname, uint64_t mode){
+    return -ENOSYS;
+}
+
+uint64_t sys_rmdir(char* pathname){
+    return -ENOSYS;
+}
+
+uint64_t sys_rename(char* oldname, char* newname){
+    return -ENOSYS;
+}
+
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2

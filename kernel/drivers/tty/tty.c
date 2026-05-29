@@ -125,6 +125,26 @@ int tty_ring_pop(tty_t* tty, uint8_t* out) {
     return 0;
 }
 
+void tty_clear_line_from_cursor(tty_t* tty){
+    uint32_t index = (tty->cursor_y * tty->width) + tty->cursor_x;
+    for(int i = index; i < ((tty->cursor_y + 1) * tty->width); i++){
+        tty->cells[i].c = 0;
+        tty->cells[i].fg = tty->default_fg;
+        tty->cells[i].bg = tty->default_bg;
+        tty_render_cell(tty,i);
+    }
+}
+
+void tty_clear_line(tty_t* tty){
+    uint32_t index = (tty->cursor_y * tty->width);
+    for(int i = index; i < index + tty->width; i++){
+        tty->cells[i].c = 0;
+        tty->cells[i].fg = tty->default_fg;
+        tty->cells[i].bg = tty->default_bg;
+        tty_render_cell(tty,i);
+    }
+}
+
 void tty_raw_input_send_escape(uint8_t byte){
     tty_ring_push(current_tty, 0x1b);
     tty_ring_push(current_tty, 91);
@@ -140,6 +160,9 @@ static inline void raw_print_arrows(uint8_t byte){
 
 void tty_handle_input_raw(input_event_t input_event){
     if(input_event.ascii != 0){
+        if(input_event.ctrl_pressed) {
+            input_event.ascii = input_event.ascii & 0x1f; // Convert to control code
+        }
         tty_ring_push(current_tty,input_event.ascii);
         if(current_tty->echo){
             if(input_event.ascii == '\r'){

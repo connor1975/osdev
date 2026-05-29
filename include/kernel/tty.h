@@ -36,14 +36,14 @@ typedef struct {
 
     // raw mode ring buffer
     uint8_t ring_buffer[INPUT_BUFFER_SIZE];
-    uint32_t head; // write index
-    uint32_t tail; // read index
+    volatile uint32_t head; // write index
+    volatile uint32_t tail; // read index
 
     // Canonical mode line buffer - rough prototype, only support buffering 1 line ahead while nothings reading
     uint8_t line_buffer[INPUT_BUFFER_SIZE];
-    int line_buffer_write_index;
-    int line_buffer_read_index;
-    int line_ready;
+    volatile int line_buffer_write_index;
+    volatile int line_buffer_read_index;
+    volatile int line_ready;
 
     int ansi_state;
     int ansi_params[8];
@@ -51,7 +51,8 @@ typedef struct {
     int ansi_private;
 } tty_t;
 
-
+void tty_clear_line(tty_t* tty);
+void tty_clear_line_from_cursor(tty_t* tty);
 void redraw_tty_screen(tty_t* tty);
 void tty_init();
 void tty_fs_init();

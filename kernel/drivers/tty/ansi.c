@@ -97,6 +97,18 @@ int handle_ansi(tty_t* tty, uint8_t c){
                             tty_clear_screen(tty);
                         }
                         break;
+                    case 'K':
+                        if(tty->ansi_param_count >= 1){
+                            if(tty->ansi_params[0] == 0){
+                                tty_clear_line_from_cursor(tty);
+                            }else if(tty->ansi_params[0] == 2){
+                                tty_clear_line(tty);
+                            }
+                        }
+                        else{
+                            tty_clear_line_from_cursor(tty);
+                        }
+                        break;
                 }
                 return 1;
             }

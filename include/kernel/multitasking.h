@@ -1,9 +1,10 @@
 #ifndef MULTITASKING_H
 #define MULTITASKING_H
 
-#include <kernel/interrupts.h>
+#include <interrupts.h>
 #include <stdint.h>
-#include <kernel/fs/vfs.h>
+#include <fs/vfs.h>
+#include <spinlock.h>
 
 #define USER_HEAP_START (void*)0x200000000 // 8 GB into memory
 #define USER_MMAP_START (void*)0x700000000000
@@ -11,6 +12,13 @@
 #define DEFAULT_STACK_SIZE_PAGES 32
 
 #define MAX_OPEN_FILES 256
+
+struct wait_queue_entry;
+
+struct wait_queue{
+    struct wait_queue_entry* head;
+    struct wait_queue_entry* tail;
+};
 
 typedef struct task{
     struct interrupt_frame context;
@@ -39,8 +47,20 @@ typedef struct task{
 enum TASK_STATE{
     TASK_DEAD,
     TASK_READY,
-    TASK_RUNNING
+    TASK_STARTING,
+    TASK_RUNNING,
+    TASK_SLEEPING
 };
+
+struct wait_queue_entry{
+    task_t* task;
+    struct wait_queue_entry* next;
+};
+
+void wait_queue_wake_one(struct wait_queue* q);
+void wait_queue_wake_all(struct wait_queue* q);
+void wait_queue_sleep(struct wait_queue* q);
+void initialise_wait_queue(struct wait_queue* q);
 
 void multitasking_init();
 task_t* find_task(int id);
@@ -57,7 +77,7 @@ void add_task(task_t* task);
 task_t* task_create_child();
 int create_kernel_task(void* func);
 int spawn_elf(fs_node_t* file,char** argv, char** envp);
-int task_close_file(int fd);
+int task_close_file(task_t* task, int fd);
 extern void yield();
 char** gen_argv(char* string);
 

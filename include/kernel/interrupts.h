@@ -11,6 +11,16 @@ void pic_send_eoi(int irq);
 void register_isr_handler(unsigned char num,void* handler);
 void register_irq_handler(unsigned char num,void* handler);
 
+static inline uint64_t irq_disable_save(void){
+    uint64_t flags;
+    asm volatile ("pushf\n\tcli\n\tpop %0" : "=r"(flags) : : "memory");
+    return flags;
+}
+
+static inline void irq_restore(uint64_t flags){
+    asm ("push %0\n\tpopf" : : "rm"(flags) : "memory","cc");
+}
+
 static inline void irq_disable(){
 	asm volatile("cli");
 }

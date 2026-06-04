@@ -1,9 +1,9 @@
-#include <kernel/common.h>
-#include <kernel/multitasking.h>
-#include <kernel/interrupts.h>
-#include <kernel/fs/vfs.h>
-#include <kernel/keyboard.h>
-#include <kernel/mm.h>
+#include <common.h>
+#include <multitasking.h>
+#include <interrupts.h>
+#include <fs/vfs.h>
+#include <keyboard.h>
+#include <mm.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -55,7 +55,7 @@ uint64_t sys_open(char* path, int flags){
 
 uint64_t sys_close(int fd){
     irq_enable();
-    return task_close_file(fd);
+    return task_close_file((task_t*)current_task,fd);
 }
 
 uint64_t sys_truncate(const char* path, uint64_t length){
@@ -277,4 +277,10 @@ uint64_t sys_dup2(int oldfd, int newfd){
     current_task->open_files[newfd]->refcount++;
     open_fs(current_task->open_files[newfd]->file,1,1);
     return newfd;
+}
+
+uint64_t sys_access(const char *path, int amode){
+    fs_node_t* file = find_file((char*)path);
+    if(file == NULL) return -ENOENT;
+    return 0;
 }

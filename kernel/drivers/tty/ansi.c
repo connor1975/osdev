@@ -1,5 +1,5 @@
-#include <kernel/tty.h>
-#include <kernel/ansi.h>
+#include <tty.h>
+#include <ansi.h>
 #include <stdio.h>
 
 int handle_ansi(tty_t* tty, uint8_t c){
@@ -86,14 +86,26 @@ int handle_ansi(tty_t* tty, uint8_t c){
                         if(tty->ansi_private && tty->ansi_params[0] == 25){
                             tty_set_cursor_visibility(tty,0);
                         }
+                        if(tty->ansi_private && tty->ansi_params[0] == 1049){ // exit alternate buffer, we dont really have this at the moment so we clear screen to mimic
+                            tty_clear_screen(tty);
+                        }
                         break;
                     case 'h':   // Show cursor
                         if(tty->ansi_private && tty->ansi_params[0] == 25){
                             tty_set_cursor_visibility(tty,1);
                         }
+                        if(tty->ansi_private && tty->ansi_params[0] == 1049){ // enter alternate buffer
+                            tty_clear_screen(tty);
+                        }
                         break;        
                     case 'J':
-                        if(tty->ansi_params[0] == 2){
+                        if(tty->ansi_param_count < 1){
+                            tty_erase_from_cursor(tty);
+                        }
+                        if(tty->ansi_param_count >= 1 && tty->ansi_params[0] == 0){
+                            tty_erase_from_cursor(tty);
+                        }
+                        if(tty->ansi_param_count >= 1 && tty->ansi_params[0] == 2){
                             tty_clear_screen(tty);
                         }
                         break;

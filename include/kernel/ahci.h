@@ -1,7 +1,7 @@
 #ifndef AHCI_H
 #define AHCI_H
 
-#include <kernel/ata.h>
+#include <ata.h>
 
 #define	SATA_SIG_ATA	0x00000101	// SATA drive
 #define	SATA_SIG_ATAPI	0xEB140101	// SATAPI drive

@@ -1,6 +1,6 @@
-#include <kernel/common.h>
-#include <kernel/net/networking.h>
-#include <kernel/net/nic.h>
+#include <common.h>
+#include <net/networking.h>
+#include <net/nic.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>

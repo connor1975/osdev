@@ -1,8 +1,8 @@
 #ifndef PIPE_H
 #define PIPE_H
 
-#include <kernel/common.h>
-#include <kernel/fs/vfs.h>
+#include <common.h>
+#include <fs/vfs.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>

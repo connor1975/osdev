@@ -1,14 +1,15 @@
-#include <kernel/common.h>
-#include <kernel/fs/vfs.h>
-#include <kernel/keyboard.h>
-#include <kernel/tty.h>
-#include <kernel/screen.h>
-#include <kernel/ansi.h>
+#include <common.h>
+#include <fs/vfs.h>
+#include <keyboard.h>
+#include <tty.h>
+#include <screen.h>
+#include <ansi.h>
 #include <sys/termios.h>
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <multitasking.h>
 
 tty_t* current_tty = NULL;
 tty_t** ttys = NULL;
@@ -110,8 +111,13 @@ int tty_ring_push(tty_t* tty, uint8_t c) {
         return -1;
     }
 
+    int was_empty = 0;
+    if(tty->head == tty->tail) was_empty = 1; 
+
     tty->ring_buffer[tty->head] = c;
     tty->head = next;
+    
+    if(was_empty) wait_queue_wake_one(&tty->ring_wait_queue);
     return 0;
 }
 
@@ -138,6 +144,16 @@ void tty_clear_line_from_cursor(tty_t* tty){
 void tty_clear_line(tty_t* tty){
     uint32_t index = (tty->cursor_y * tty->width);
     for(int i = index; i < index + tty->width; i++){
+        tty->cells[i].c = 0;
+        tty->cells[i].fg = tty->default_fg;
+        tty->cells[i].bg = tty->default_bg;
+        tty_render_cell(tty,i);
+    }
+}
+
+void tty_erase_from_cursor(tty_t* tty){
+    uint32_t index = (tty->cursor_y * tty->width) + tty->cursor_x;
+    for(int i = index; i < tty->cell_count; i++){
         tty->cells[i].c = 0;
         tty->cells[i].fg = tty->default_fg;
         tty->cells[i].bg = tty->default_bg;
@@ -195,7 +211,7 @@ void tty_handle_input_raw(input_event_t input_event){
 }
 
 void tty_handle_input_canonical(input_event_t input_event){
-    if(current_tty->line_ready) return;
+    if(current_tty->line_ready) wait_queue_wake_one(&current_tty->line_wait_queue);;
     if(input_event.ascii != 0){
         char c = input_event.ascii;
         
@@ -219,6 +235,7 @@ void tty_handle_input_canonical(input_event_t input_event){
             current_tty->line_buffer[current_tty->line_buffer_write_index] = '\n';
             current_tty->line_buffer[current_tty->line_buffer_write_index + 1] = 0;
             current_tty->line_ready = 1;
+            wait_queue_wake_one(&current_tty->line_wait_queue);
             break;
             default:
             current_tty->line_buffer[current_tty->line_buffer_write_index] = c;
@@ -332,7 +349,7 @@ uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
     if(tty->mode == TTY_RAW){
         int bytes_read = 0;
         uint8_t c;
-        while(tty->tail == tty->head); // Wait for input
+        while(tty->tail == tty->head) wait_queue_sleep(&tty->ring_wait_queue); // Wait for input
         while(bytes_read < size && tty_ring_pop(tty,&c) == 0){
             buffer[bytes_read] = c;
             bytes_read++;
@@ -340,7 +357,9 @@ uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
         return bytes_read;
     }else{
         int bytes_read = 0;
-        while(!tty->line_ready);
+        
+        while(!tty->line_ready) wait_queue_sleep(&tty->line_wait_queue);
+
         for(int i = 0; i < size; i++){
             buffer[i] = tty->line_buffer[tty->line_buffer_read_index];
             bytes_read++;
@@ -415,7 +434,7 @@ fs_node_t* create_stderr_device(){
 
 fs_node_t* create_tty_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
-    strcpy(node->name,"tty");
+    strcpy(node->name,"tty0");
     node->mask = 0666;
     node->uid = 0;
     node->gid = 0;
@@ -457,6 +476,8 @@ void tty_init(){
         tty->mode = TTY_CANONICAL;
         tty->cursor_visible = 1;
         tty->echo = 1;
+        initialise_wait_queue(&tty->line_wait_queue);
+        initialise_wait_queue(&tty->ring_wait_queue);
     }
     current_tty = ttys[0];
 }

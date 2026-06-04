@@ -1,11 +1,11 @@
 #include <stdint.h>
 #include <string.h>
-#include <kernel/pci.h>
-#include <kernel/common.h>
-#include <kernel/ahci.h>
-#include <kernel/ata.h>
-#include <kernel/mm.h>
-#include <kernel/disk.h>
+#include <pci.h>
+#include <common.h>
+#include <ahci.h>
+#include <ata.h>
+#include <mm.h>
+#include <disk.h>
 #include <stddef.h>
 
 int ahci_device_count = 0;

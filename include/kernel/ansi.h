@@ -1,7 +1,7 @@
 #ifndef ANSI_H
 #define ANSI_H
 
-#include <kernel/tty.h>
+#include <tty.h>
 #include <stdint.h>
 
 #define ANSI_STATE_NORMAL  0

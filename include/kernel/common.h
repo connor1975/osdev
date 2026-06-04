@@ -3,8 +3,8 @@
 
 #include <bootloader.h>
 #include <stdint.h>
-#include <kernel/mm.h>
-#include <kernel/screen.h>
+#include <mm.h>
+#include <screen.h>
 
 void set_text_colour(uint32_t colour);
 void clear_screen(uint32_t colour);
@@ -27,8 +27,8 @@ void heap_init();
 void syscall_install();
 void start_shell();
 
-#include <kernel/multitasking.h>
-#include <kernel/interrupts.h>
-#include <kernel/msr.h>
+#include <multitasking.h>
+#include <interrupts.h>
+#include <msr.h>
 
 #endif

@@ -1,6 +1,6 @@
-#include <kernel/common.h>
-#include <kernel/interrupts.h>
-#include <kernel/msr.h>
+#include <common.h>
+#include <interrupts.h>
+#include <msr.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -46,6 +46,11 @@ extern uint64_t sys_link(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10,
 extern uint64_t sys_mkdir(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_rmdir(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_rename(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_access(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_geteuid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_getgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_getegid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_getuid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
 syscall syscall_table[] = {
     (syscall)sys_exit, // 0
@@ -86,6 +91,11 @@ syscall syscall_table[] = {
     (syscall)sys_mkdir, // 35
     (syscall)sys_rmdir, // 36
     (syscall)sys_rename, // 37
+    (syscall)sys_access, // 38
+    (syscall)sys_geteuid, //39
+    (syscall)sys_getgid, //40
+    (syscall)sys_getegid, //41
+    (syscall)sys_getuid, // 42
     0
 };
 

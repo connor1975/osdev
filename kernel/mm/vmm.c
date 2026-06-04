@@ -1,6 +1,6 @@
-#include <kernel/common.h>
-#include <kernel/mm.h>
-#include <kernel/interrupts.h>
+#include <common.h>
+#include <mm.h>
+#include <interrupts.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>

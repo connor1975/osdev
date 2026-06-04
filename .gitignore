@@ -4,3 +4,5 @@ bin/*
 test
 newlib
 sysroot/*
+binutils
+gcc

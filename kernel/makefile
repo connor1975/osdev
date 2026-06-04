@@ -1,7 +1,7 @@
 CC := x86_64-elf-gcc
 LD := x86_64-elf-gcc
 NASM := nasm
-CFLAGS := -ffreestanding -I src/include/ -fno-pic -mno-red-zone -z max-page-size=0x1000 -mcmodel=kernel -I $(INCLUDE_DIR) -Wall -O2 -mgeneral-regs-only
+CFLAGS := -ffreestanding -I src/include/ -fno-pic -mno-red-zone -z max-page-size=0x1000 -mcmodel=kernel -I $(INCLUDE_DIR) -I $(INCLUDE_DIR)/kernel -Wall -O2 -mgeneral-regs-only
 LDFLAGS := -ffreestanding -nostdlib -fno-pic -mno-red-zone -z max-page-size=0x1000 -mcmodel=kernel
 
 SRCS := $(shell find -name '*.c')

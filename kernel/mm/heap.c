@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
-#include <kernel/mm.h>
+#include <mm.h>
 #include <string.h>
-#include <kernel/spinlock.h>
-#include <kernel/common.h>
+#include <spinlock.h>
+#include <common.h>
 
 // Simple heap implementation
 // some room for optimization

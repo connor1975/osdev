@@ -2,9 +2,10 @@
 #define TTY_H
 
 #include <stdint.h>
-#include <kernel/fs/vfs.h>
-#include <kernel/keyboard.h>
-#include <kernel/spinlock.h>
+#include <fs/vfs.h>
+#include <keyboard.h>
+#include <spinlock.h>
+#include <multitasking.h>
 
 typedef struct{
     char c;
@@ -35,6 +36,7 @@ typedef struct {
     int cursor_visible;
 
     // raw mode ring buffer
+    struct wait_queue ring_wait_queue;
     uint8_t ring_buffer[INPUT_BUFFER_SIZE];
     volatile uint32_t head; // write index
     volatile uint32_t tail; // read index
@@ -44,6 +46,7 @@ typedef struct {
     volatile int line_buffer_write_index;
     volatile int line_buffer_read_index;
     volatile int line_ready;
+    struct wait_queue line_wait_queue;
 
     int ansi_state;
     int ansi_params[8];
@@ -51,6 +54,7 @@ typedef struct {
     int ansi_private;
 } tty_t;
 
+void tty_erase_from_cursor(tty_t* tty);
 void tty_clear_line(tty_t* tty);
 void tty_clear_line_from_cursor(tty_t* tty);
 void redraw_tty_screen(tty_t* tty);

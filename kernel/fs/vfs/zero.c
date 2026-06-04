@@ -1,5 +1,5 @@
-#include <kernel/common.h>
-#include <kernel/fs/vfs.h>
+#include <common.h>
+#include <fs/vfs.h>
 #include <stdint.h>
 #include <string.h>
 

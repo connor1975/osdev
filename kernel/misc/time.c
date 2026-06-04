@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <kernel/common.h>
+#include <common.h>
 
 uint8_t read_cmos_register(int reg){
     outb(0x70,reg);

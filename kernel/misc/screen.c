@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <bootloader.h>
 #include <string.h>
-#include <kernel/screen.h>
-#include <kernel/common.h>
+#include <screen.h>
+#include <common.h>
 
 struct vbe_mode_info* framebuffer_info;
 void* framebuffer;

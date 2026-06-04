@@ -1,8 +1,8 @@
-#include <kernel/fs/vfs.h>
-#include <kernel/common.h>
-#include <kernel/fs/fat.h>
-#include <kernel/time.h>
-#include <kernel/disk.h>
+#include <fs/vfs.h>
+#include <common.h>
+#include <fs/fat.h>
+#include <time.h>
+#include <disk.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>

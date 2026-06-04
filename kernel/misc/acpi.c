@@ -2,8 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <kernel/common.h>
-#include <kernel/acpi.h>
+#include <common.h>
+#include <acpi.h>
 
 void* rsdt;
 void* xsdt;

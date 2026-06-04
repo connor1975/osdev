@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <kernel/mbr.h>
-#include <kernel/disk.h>
-#include <kernel/mm.h>
-#include <kernel/common.h>
+#include <mbr.h>
+#include <disk.h>
+#include <mm.h>
+#include <common.h>
 
 int has_mbr_signature(void* bootsector){
     if(*(uint16_t*)(bootsector + 510) == 0xAA55){

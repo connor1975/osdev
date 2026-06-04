@@ -1,7 +1,7 @@
-#include <kernel/common.h>
-#include <kernel/fs/vfs.h>
-#include <kernel/disk.h>
-#include <kernel/mbr.h>
+#include <common.h>
+#include <fs/vfs.h>
+#include <disk.h>
+#include <mbr.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdint.h>

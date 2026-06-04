@@ -2,7 +2,7 @@
 #define NIC_H
 
 #include <stdint.h>
-#include <kernel/net/networking.h>
+#include <net/networking.h>
 
 typedef uint8_t* (*nic_get_mac_func)();
 typedef void (*nic_send_func)(void *packet, uint32_t packetsize);

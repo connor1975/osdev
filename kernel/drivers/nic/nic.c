@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
-#include <kernel/net/nic.h>
-#include <kernel/common.h>
+#include <net/nic.h>
+#include <common.h>
 
 nic_t* default_nic = NULL;
 

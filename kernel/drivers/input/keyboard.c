@@ -1,9 +1,9 @@
-#include <kernel/common.h>
-#include <kernel/keyboard.h>
-#include <kernel/tty.h>
-#include <kernel/interrupts.h>
-#include <kernel/pipe.h>
-#include <kernel/tty.h>
+#include <common.h>
+#include <keyboard.h>
+#include <tty.h>
+#include <interrupts.h>
+#include <pipe.h>
+#include <tty.h>
 #include <stdint.h>
 #include <stdio.h>
 

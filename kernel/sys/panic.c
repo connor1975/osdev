@@ -1,6 +1,6 @@
-#include <kernel/common.h>
-#include <kernel/interrupts.h>
-#include <kernel/multitasking.h>
+#include <common.h>
+#include <interrupts.h>
+#include <multitasking.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>

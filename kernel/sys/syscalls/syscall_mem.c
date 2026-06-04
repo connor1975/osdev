@@ -1,7 +1,7 @@
-#include <kernel/interrupts.h>
-#include <kernel/common.h>
-#include <kernel/multitasking.h>
-#include <kernel/mm.h>
+#include <interrupts.h>
+#include <common.h>
+#include <multitasking.h>
+#include <mm.h>
 #include <string.h>
 #include <stdint.h>
 

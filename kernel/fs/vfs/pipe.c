@@ -1,6 +1,6 @@
-#include <kernel/common.h>
-#include <kernel/fs/vfs.h>
-#include <kernel/spinlock.h>
+#include <common.h>
+#include <fs/vfs.h>
+#include <spinlock.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>

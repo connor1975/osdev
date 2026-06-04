@@ -26,7 +26,7 @@
 // returns the start address
 #ifndef BOOTLOADER
 
-#include <kernel/multitasking.h>
+#include <multitasking.h>
 void* load_elf(void* elfdata, uint64_t cr3);
 int verify_elf(void* elfdata);
 int exec_elf(task_t* task, void* elf_data, char** argv, char** envp);

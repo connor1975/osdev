@@ -1,8 +1,8 @@
-#include <kernel/multitasking.h>
+#include <multitasking.h>
 #include <stdint.h>
-#include <kernel/interrupts.h>
+#include <interrupts.h>
 #include <stdio.h>
-#include <kernel/common.h>
+#include <common.h>
 
 isr_t isr_handlers[256];
 

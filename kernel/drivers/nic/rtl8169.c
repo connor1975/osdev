@@ -1,8 +1,8 @@
-#include <kernel/common.h>
-#include <kernel/mm.h>
-#include <kernel/pci.h>
-#include <kernel/net/networking.h>
-#include <kernel/net/nic.h>
+#include <common.h>
+#include <mm.h>
+#include <pci.h>
+#include <net/networking.h>
+#include <net/nic.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>

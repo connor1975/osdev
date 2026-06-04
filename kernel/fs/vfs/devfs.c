@@ -1,7 +1,7 @@
-#include <kernel/fs/vfs.h>
-#include <kernel/keyboard.h>
-#include <kernel/common.h>
-#include <kernel/tty.h>
+#include <fs/vfs.h>
+#include <keyboard.h>
+#include <common.h>
+#include <tty.h>
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>

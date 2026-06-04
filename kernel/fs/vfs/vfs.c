@@ -1,6 +1,6 @@
-#include <kernel/fs/vfs.h>
-#include <kernel/multitasking.h>
-#include <kernel/common.h>
+#include <fs/vfs.h>
+#include <multitasking.h>
+#include <common.h>
 #include <stdio.h>
 #include <string.h>
 

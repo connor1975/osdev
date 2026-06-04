@@ -1,9 +1,9 @@
-#include <kernel/common.h>
-#include <kernel/pci.h>
-#include <kernel/ahci.h>
-#include <kernel/ata.h>
-#include <kernel/rtl8169.h>
-#include <kernel/rtl8139.h>
+#include <common.h>
+#include <pci.h>
+#include <ahci.h>
+#include <ata.h>
+#include <rtl8169.h>
+#include <rtl8139.h>
 #include <stdint.h>
 #include <stdio.h>
 

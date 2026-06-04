@@ -1,13 +1,13 @@
-#include <kernel/common.h>
-#include <kernel/interrupts.h>
-#include <kernel/gdt.h>
-#include <kernel/mm.h>
+#include <common.h>
+#include <interrupts.h>
+#include <gdt.h>
+#include <mm.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <elf.h>
 #include <string.h>
-#include <kernel/multitasking.h>
-#include <kernel/fs/vfs.h>
+#include <multitasking.h>
+#include <fs/vfs.h>
 #include <errno.h>
 
 uint64_t ticks = 0;
@@ -57,6 +57,66 @@ int get_task_state(int pid){
     return task->state;
 }
 
+void wait_queue_wake_one(struct wait_queue* q){
+    uint64_t flags = irq_disable_save();
+    if(q->tail == NULL){
+        irq_restore(flags);
+        return;
+    }
+
+    if(q->head == q->tail){
+        q->tail->task->state = TASK_READY;
+        free(q->tail);
+        q->head = NULL;
+        q->tail = NULL;
+    }else{
+        q->head->task->state = TASK_READY;
+        struct wait_queue_entry* next = q->head->next;
+        free(q->head);
+        q->head = next;
+    }
+
+    irq_restore(flags);
+}
+
+void wait_queue_wake_all(struct wait_queue* q){
+    uint64_t flags = irq_disable_save();
+
+    struct wait_queue_entry* entry = q->head;
+    while(entry != NULL){
+        entry->task->state = TASK_READY;
+        entry = entry->next;
+    }
+    q->head = NULL;
+    q->tail = NULL;
+
+    irq_restore(flags);
+}
+
+void wait_queue_sleep(struct wait_queue* q){
+    uint64_t flags = irq_disable_save();
+    struct wait_queue_entry* entry = malloc(sizeof(struct wait_queue_entry));
+    entry->next = NULL;
+    entry->task = (task_t*)current_task;
+    
+    if(q->head == NULL){
+        q->head = entry;
+        q->tail = entry;
+    }else{
+        q->tail->next = entry;
+        q->tail = entry;
+        
+    }
+    current_task->state = TASK_SLEEPING;
+    irq_restore(flags);
+    yield();
+}
+
+void initialise_wait_queue(struct wait_queue* q){
+    q->head = NULL;
+    q->tail = NULL;
+}
+
 void clone_file_descriptors(task_t* new_task, task_t* old_task){
     memset(new_task->open_files,0,sizeof(struct file_descriptor*) * MAX_OPEN_FILES);
     for(int i = 0; i < MAX_OPEN_FILES; i++){
@@ -99,17 +159,17 @@ int task_open_file(fs_node_t* file, task_t* task, int flags){
     return i;
 }
 
-int task_close_file(int fd){
+int task_close_file(task_t* task, int fd){
     if(fd >= MAX_OPEN_FILES) return -EBADF;
-    if(current_task->open_files[fd] == NULL) return -EBADF;
-    struct file_descriptor* file_descriptor = current_task->open_files[fd];
+    if(task->open_files[fd] == NULL) return -EBADF;
+    struct file_descriptor* file_descriptor = task->open_files[fd];
     if(file_descriptor->refcount > 1){
         file_descriptor->refcount--;
         return 0;
     }
     close_fs(file_descriptor->file);
     free(file_descriptor);
-    current_task->open_files[fd] = NULL;
+    task->open_files[fd] = NULL;
     return 0;
 }
 
@@ -124,21 +184,25 @@ void task_add(task_t* task){
 }
 
 task_t* task_create_child(){
+    uint64_t flags = irq_disable_save();
     task_t* new_task = malloc(sizeof(task_t));
     memset(new_task, 0, sizeof(task_t));
     new_task->id = alloc_pid();
     new_task->children = NULL;
     new_task->child_count = 0;
     new_task->wait_handled = 0;
+    new_task->state = TASK_STARTING;
+    
     new_task->parent = (task_t*)current_task;
     current_task->children = realloc(current_task->children,(current_task->child_count + 1) * sizeof(task_t*));
     current_task->children[current_task->child_count] = new_task;
     current_task->child_count++;
+    irq_restore(flags);
     return new_task;
 }
 
 int create_kernel_task(void* func){
-    irq_disable();
+    uint64_t flags = irq_disable_save();
     task_t* new_task = task_create_child();
 
     clone_file_descriptors(new_task,(task_t*)current_task);
@@ -158,7 +222,7 @@ int create_kernel_task(void* func){
     memcpy(new_task->cwd,"/\0",2);
 
     task_add(new_task);
-    irq_enable();
+    irq_restore(flags);
     return new_task->id;
 }
 
@@ -172,7 +236,7 @@ int spawn_elf(fs_node_t* file,char** argv, char** envp){
         return -ENOEXEC;
     }
 
-    irq_disable();
+    uint64_t flags = irq_disable_save();
 
     task_t* newtask = task_create_child();
     int ret = exec_elf(newtask,buffer,argv,envp);
@@ -188,7 +252,7 @@ int spawn_elf(fs_node_t* file,char** argv, char** envp){
     newtask->exit_code = 0;
 
     task_add(newtask);
-    irq_enable();
+    irq_restore(flags);
     return newtask->id;
 }
 
@@ -247,10 +311,9 @@ void kill_task(int pid, int exit_code){
     if(task->user) free_process_memory(task->cr3);
     task->exit_code = exit_code;
     for(int i = 0; i < MAX_OPEN_FILES; i++){
-        task_close_file(i);
+        task_close_file(task,i);
     }
-    irq_enable();
-    if(current_task->id == pid) while(1)asm volatile("hlt"); // wait for schedule
+    if(current_task->id == pid) yield();
 }
 
 void task_exit(int exit_code){

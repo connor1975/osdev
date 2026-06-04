@@ -1,0 +1,74 @@
+diff --git a/bfd/config.bfd b/bfd/config.bfd
+index a4c6c8e8854..1ad77978663 100644
+--- a/bfd/config.bfd
++++ b/bfd/config.bfd
+@@ -238,6 +238,11 @@ esac
+ case "${targ}" in
+ # START OF targmatch.h
+ #ifdef BFD64
++  x86_64-*-myos*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;
+   aarch64-*-darwin*)
+     targ_defvec=aarch64_mach_o_vec
+     targ_selvecs="arm_mach_o_vec mach_o_le_vec mach_o_be_vec mach_o_fat_vec"
+@@ -342,6 +347,12 @@ case "${targ}" in
+   am33_2.0-*-linux*)
+     targ_defvec=am33_elf32_linux_vec
+     ;;
++  
++  i[3-7]86-*-myos*)
++    targ_defvec=i386_elf32_vec
++    targ_selvecs=
++    targ64_selvecs=x86_64_elf64_vec
++    ;;
+ 
+   arc*eb-*-elf* | arc*eb-*-linux*)
+     targ_defvec=arc_elf32_be_vec
+diff --git a/config.sub b/config.sub
+index dba16e84c77..939f3639eb1 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1754,7 +1754,7 @@ case $os in
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | myos* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff --git a/gas/configure.tgt b/gas/configure.tgt
+index 62f806bdfe8..8b94e60bf6d 100644
+--- a/gas/configure.tgt
++++ b/gas/configure.tgt
+@@ -125,6 +125,7 @@ esac
+ generic_target=${cpu_type}-$vendor-$os
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
++  i386-*-myos*)    fmt=elf ;;
+   aarch64*-*-elf*)			fmt=elf;;
+   aarch64*-*-fuchsia*)			fmt=elf;;
+   aarch64*-*-haiku*)			fmt=elf em=haiku ;;
+diff --git a/ld/configure.tgt b/ld/configure.tgt
+index 2bae9099b6a..0e8587bf798 100644
+--- a/ld/configure.tgt
++++ b/ld/configure.tgt
+@@ -80,6 +80,15 @@ fi
+ # Please try to keep this table more or less in alphabetic order - it
+ # makes it much easier to lookup a specific archictecture.
+ case "${targ}" in
++i[3-7]86-*-myos*)
++			targ_emul=elf_i386
++			targ_extra_emuls=elf_i386
++			targ64_extra_emuls="elf_x86_64 elf_x86_64"
++			;;
++x86_64-*-myos*)
++			targ_emul=elf_x86_64
++			targ_extra_emuls="elf_i386 elf_x86_64 elf_i386"
++			;;
+ aarch64_be-*-elf)	targ_emul=aarch64elfb
+ 			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b armelfb armelf"
+ 			;;

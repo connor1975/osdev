@@ -1,10 +1,10 @@
 #include <stdint.h>
-#include <kernel/net/networking.h>
-#include <kernel/net/nic.h>
-#include <kernel/pci.h>
-#include <kernel/interrupts.h>
-#include <kernel/mm.h>
-#include <kernel/common.h>
+#include <net/networking.h>
+#include <net/nic.h>
+#include <pci.h>
+#include <interrupts.h>
+#include <mm.h>
+#include <common.h>
 #include <stdio.h>
 #include <string.h>
 

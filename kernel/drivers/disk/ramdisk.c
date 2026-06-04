@@ -1,5 +1,5 @@
-#include <kernel/common.h>
-#include <kernel/disk.h>
+#include <common.h>
+#include <disk.h>
 #include <stdint.h>
 #include <string.h>
 

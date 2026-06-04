@@ -1,9 +1,9 @@
-#include <kernel/common.h>
-#include <kernel/interrupts.h>
-#include <kernel/multitasking.h>
-#include <kernel/pipe.h>
-#include <kernel/mm.h>
-#include <kernel/time.h>
+#include <common.h>
+#include <interrupts.h>
+#include <multitasking.h>
+#include <pipe.h>
+#include <mm.h>
+#include <time.h>
 #include <stdint.h>
 #include <errno.h>
 
@@ -51,5 +51,21 @@ uint64_t sys_uname(struct old_utsname* buf){
     memcpy(buf->release,release,sizeof(release));
     memcpy(buf->version,version, sizeof(version));
     memcpy(buf->machine,machine,sizeof(machine));
+    return 0;
+}
+
+uint64_t sys_geteuid(){
+    return 0;
+}
+
+uint64_t sys_getgid(){
+    return 0;
+}
+
+uint64_t sys_getegid(){
+    return 0;
+}
+
+uint64_t sys_getuid(){
     return 0;
 }

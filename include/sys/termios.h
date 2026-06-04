@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+typedef unsigned int speed_t;
+
 #define VINTR    0
 #define VQUIT    1
 #define VERASE   2

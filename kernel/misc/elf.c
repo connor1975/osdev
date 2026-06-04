@@ -1,7 +1,7 @@
-#include <kernel/mm.h>
-#include <kernel/common.h>
-#include <kernel/multitasking.h>
-#include <kernel/gdt.h>
+#include <mm.h>
+#include <common.h>
+#include <multitasking.h>
+#include <gdt.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -40,28 +40,37 @@ void push_to_stack(task_t* task, void* buffer, uint64_t length){
     copy_to_pml4((void*)task->context.rsp,buffer,length,phys_to_virt((void*)task->cr3));
 }
 
-void push_args(task_t* task, int argc, char** argv,char** envp){
+void push_args(task_t* task, int argc, char** argv, char** envp) {
     uint64_t* argptrs = malloc(argc * 8);
-    for(int i = 0; i < argc; i++){
-        push_to_stack(task,(void*)argv[i],strlen(argv[i]) + 1);
+    for (int i = 0; i < argc; i++) {
+        push_to_stack(task, (void*)argv[i], strlen(argv[i]) + 1);
         argptrs[i] = task->context.rsp;
     }
-    task->context.rsp &= ~((uintptr_t)7);    
-    push_to_stack(task,(void*)argptrs,argc*8);
+    task->context.rsp &= ~((uintptr_t)7);
+
+    // NULL terminator for argv
+    uint64_t null_ptr = 0;
+    push_to_stack(task, &null_ptr, 8);
+
+    push_to_stack(task, (void*)argptrs, argc * 8);
     free(argptrs);
     void* argvret = (void*)task->context.rsp;
 
     void* envpret = NULL;
-    if(envp != NULL && *envp != NULL){
+    if (envp != NULL && *envp != NULL) {
         int count = 0;
-        while(envp[count] != NULL)count++;
+        while (envp[count] != NULL) count++;
         uint64_t* envptrs = malloc(count * 8);
-        for(int i = 0; i < count; i++){
-            push_to_stack(task,envp[i],strlen(envp[i]) + 1);
+        for (int i = 0; i < count; i++) {
+            push_to_stack(task, envp[i], strlen(envp[i]) + 1);
             envptrs[i] = task->context.rsp;
         }
         task->context.rsp &= ~((uintptr_t)7);
-        push_to_stack(task,envptrs,count*8);
+
+        // NULL terminator for envp
+        push_to_stack(task, &null_ptr, 8);
+
+        push_to_stack(task, envptrs, count * 8);
         free(envptrs);
         envpret = (void*)task->context.rsp;
     }

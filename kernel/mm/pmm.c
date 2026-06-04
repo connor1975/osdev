@@ -1,9 +1,9 @@
 #include <bootloader.h>
-#include <kernel/common.h>
-#include <kernel/mm.h>
+#include <common.h>
+#include <mm.h>
 #include <stdio.h>
 #include <string.h>
-#include <kernel/spinlock.h>
+#include <spinlock.h>
 
 unsigned char* bitmap;
 uint64_t frame_count;

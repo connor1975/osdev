@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <string.h>
-#include <kernel/interrupts.h>
+#include <interrupts.h>
 
 typedef struct {
 	uint16_t    isr_low;

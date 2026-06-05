@@ -10,167 +10,11 @@
 #include <fs/vfs.h>
 #include <errno.h>
 
-uint64_t ticks = 0;
-
-task_t* task_list = NULL;
-volatile task_t* current_task = NULL;
-
-int next_pid = 0;
-
-int alloc_pid(){
-    return next_pid++;
-}
-
-void get_next_ready_task(){
-    while(1){
-        if(current_task->next != NULL){
-            current_task = current_task->next;
-        }else{
-            current_task = task_list;
-        }
-        if(current_task->state == TASK_READY) return;
-    }
-}
-
-void schedule(struct interrupt_frame* regs){
-    memcpy((void*)&current_task->context, (void*)regs, sizeof(struct interrupt_frame));
-    asm volatile("fxsave %0 "::"m"(current_task->fxsave_region));
-    if(current_task->state == TASK_RUNNING) current_task->state = TASK_READY; 
-
-    get_next_ready_task();
-
-    current_task->state = TASK_RUNNING;
-    memcpy((void*)regs,(void*)&current_task->context,sizeof(struct interrupt_frame));
-    switch_pml4((void*)current_task->cr3);
-    tss_set_kernel_stack((void*)current_task->rsp0);
-    asm volatile("fxrstor  %0 "::"m"(current_task->fxsave_region));
-    wrmsr(MSR_FSBASE,(uint64_t)current_task->fs_base);
-}
-
-void timer_irq(struct interrupt_frame* regs){
-    ticks++;
-    schedule(regs);
-}
+extern task_t* task_list;
 
 int get_task_state(int pid){
     task_t* task = find_task(pid);
     return task->state;
-}
-
-void wait_queue_wake_one(struct wait_queue* q){
-    uint64_t flags = irq_disable_save();
-    if(q->tail == NULL){
-        irq_restore(flags);
-        return;
-    }
-
-    if(q->head == q->tail){
-        q->tail->task->state = TASK_READY;
-        free(q->tail);
-        q->head = NULL;
-        q->tail = NULL;
-    }else{
-        q->head->task->state = TASK_READY;
-        struct wait_queue_entry* next = q->head->next;
-        free(q->head);
-        q->head = next;
-    }
-
-    irq_restore(flags);
-}
-
-void wait_queue_wake_all(struct wait_queue* q){
-    uint64_t flags = irq_disable_save();
-
-    struct wait_queue_entry* entry = q->head;
-    while(entry != NULL){
-        entry->task->state = TASK_READY;
-        entry = entry->next;
-    }
-    q->head = NULL;
-    q->tail = NULL;
-
-    irq_restore(flags);
-}
-
-void wait_queue_sleep(struct wait_queue* q){
-    uint64_t flags = irq_disable_save();
-    struct wait_queue_entry* entry = malloc(sizeof(struct wait_queue_entry));
-    entry->next = NULL;
-    entry->task = (task_t*)current_task;
-    
-    if(q->head == NULL){
-        q->head = entry;
-        q->tail = entry;
-    }else{
-        q->tail->next = entry;
-        q->tail = entry;
-        
-    }
-    current_task->state = TASK_SLEEPING;
-    irq_restore(flags);
-    yield();
-}
-
-void initialise_wait_queue(struct wait_queue* q){
-    q->head = NULL;
-    q->tail = NULL;
-}
-
-void clone_file_descriptors(task_t* new_task, task_t* old_task){
-    memset(new_task->open_files,0,sizeof(struct file_descriptor*) * MAX_OPEN_FILES);
-    for(int i = 0; i < MAX_OPEN_FILES; i++){
-        if(old_task->open_files[i] != NULL){
-            new_task->open_files[i] = malloc(sizeof(struct file_descriptor));
-            memcpy(new_task->open_files[i],old_task->open_files[i],sizeof(struct file_descriptor));
-            new_task->open_files[i]->refcount++;
-            open_fs(new_task->open_files[i]->file,1,1);
-        }
-    }
-}
-
-int task_chdir(char* path){
-    if(path == NULL) return -EFAULT;
-    char* newdir = vfs_absolute_path(current_task->cwd,path);
-    fs_node_t* node = kopen(newdir);
-    if(node == NULL) return -ENOENT;
-    if(!(node->flags & FS_DIRECTORY)) return -ENOTDIR;
-    current_task->cwd = realloc(current_task->cwd,strlen(newdir) + 1);
-    strcpy(current_task->cwd,newdir);
-    free(newdir);
-    return 0;
-}
-
-int task_open_file(fs_node_t* file, task_t* task, int flags){
-    if(file == NULL) return -ENOENT;
-    int i = 0;
-    for(i = 0; i < MAX_OPEN_FILES; i++){
-        if(task->open_files[i] == NULL) break;
-    }
-    open_fs(file,flags & O_RDONLY, flags & O_WRONLY);
-    task->open_files[i] = malloc(sizeof(struct file_descriptor));
-    task->open_files[i]->file = file;
-    task->open_files[i]->offset = 0;
-    task->open_files[i]->refcount = 1;
-    task->open_files[i]->flags = flags;
-    if(flags & O_TRUNC){
-        truncate_fs(file,0); 
-    }
-    return i;
-}
-
-int task_close_file(task_t* task, int fd){
-    if(fd >= MAX_OPEN_FILES) return -EBADF;
-    if(task->open_files[fd] == NULL) return -EBADF;
-    struct file_descriptor* file_descriptor = task->open_files[fd];
-    if(file_descriptor->refcount > 1){
-        file_descriptor->refcount--;
-        return 0;
-    }
-    close_fs(file_descriptor->file);
-    free(file_descriptor);
-    task->open_files[fd] = NULL;
-    return 0;
 }
 
 void task_add(task_t* task){
@@ -192,7 +36,9 @@ task_t* task_create_child(){
     new_task->child_count = 0;
     new_task->wait_handled = 0;
     new_task->state = TASK_STARTING;
-    
+    memset(new_task->fxsave_region,0,512);
+    memset((void*)&new_task->context,0,sizeof(struct interrupt_frame));
+
     new_task->parent = (task_t*)current_task;
     current_task->children = realloc(current_task->children,(current_task->child_count + 1) * sizeof(task_t*));
     current_task->children[current_task->child_count] = new_task;
@@ -207,8 +53,6 @@ int create_kernel_task(void* func){
 
     clone_file_descriptors(new_task,(task_t*)current_task);
 
-    memset(new_task->fxsave_region,0,512);
-    memset((void*)&new_task->context,0,sizeof(struct interrupt_frame));
     new_task->context.cs = KERNEL_CODE;
     new_task->context.ss = KERNEL_DATA;
     new_task->context.rflags = 0x200; // Interrupt enable
@@ -290,20 +134,6 @@ int task_fork(){
     return new_task->id;
 }
 
-task_t* find_task(int id){
-    task_t* cur = task_list;
-    do{
-        if(cur->id == id) return cur;
-        cur = cur->next;
-    }while(cur != NULL);
-    return NULL;
-}
-
-void sleep(uint64_t ms){
-    uint64_t target = ticks + ms;
-    while(ticks < target);
-}
-
 void kill_task(int pid, int exit_code){
     irq_disable();
     task_t* task = find_task(pid);
@@ -313,6 +143,8 @@ void kill_task(int pid, int exit_code){
     for(int i = 0; i < MAX_OPEN_FILES; i++){
         task_close_file(task,i);
     }
+    wait_queue_wake_all(&task->exit_waiters);
+    wait_queue_wake_all(&task->parent->child_event_waiters);
     if(current_task->id == pid) yield();
 }
 
@@ -332,7 +164,7 @@ void multitasking_init(){
     kernel_task.user = 0;
     kernel_task.rsp0 = 0;
     kernel_task.id = alloc_pid();
-    kernel_task.state = TASK_READY;
+    kernel_task.state = TASK_RUNNING;
     
     kernel_task.cwd = malloc(2);
     kernel_task.cwd[0] = '/';
@@ -348,10 +180,5 @@ void multitasking_init(){
     task_open_file(find_file("/dev/stdout"),&kernel_task, O_WRONLY);
     task_open_file(find_file("/dev/stderr"),&kernel_task, O_WRONLY);
 
-    int divisor = 1193180 / 1000;
-    outb(0x43, 0x36);
-    outb(0x40, divisor & 0xFF);
-    outb(0x40, divisor >> 8);
-    register_irq_handler(0,timer_irq);
-
+    timer_init();
 }

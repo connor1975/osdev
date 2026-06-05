@@ -38,6 +38,9 @@ typedef struct task{
     int exit_code;
     void* fs_base;
 
+    struct wait_queue child_event_waiters;
+    struct wait_queue exit_waiters;  
+
     int wait_handled;
     int child_count;
     struct task** children;
@@ -62,6 +65,9 @@ void wait_queue_wake_all(struct wait_queue* q);
 void wait_queue_sleep(struct wait_queue* q);
 void initialise_wait_queue(struct wait_queue* q);
 
+void timer_init();
+void clone_file_descriptors(task_t* new_task, task_t* old_task);
+int alloc_pid();
 void multitasking_init();
 task_t* find_task(int id);
 int create_task(void* func, int user, uint64_t cr3, int argc, char** argv, char** envp);

@@ -65,7 +65,6 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
 }
 
 uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
-    irq_enable();
     int state;
     if(pid > 0) {
         while((state = get_task_state(pid)) != TASK_DEAD);
@@ -82,6 +81,7 @@ uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
                     return current_task->children[i]->id;
                 }
             }
+            wait_queue_sleep(&((task_t*)current_task)->child_event_waiters);
         }
     }
 }

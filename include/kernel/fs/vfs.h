@@ -6,7 +6,7 @@
 
 struct dirent
 {
-    char name[128];
+    char name[256];
     uint32_t ino;
 };
 

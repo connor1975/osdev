@@ -377,6 +377,7 @@ uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buff
 
 fs_node_t* create_stdin_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0, sizeof(fs_node_t));
     strcpy(node->name,"stdin");
     node->mask = 0666;
     node->uid = 0;
@@ -396,6 +397,7 @@ fs_node_t* create_stdin_device(){
 
 fs_node_t* create_stdout_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0, sizeof(fs_node_t));
     strcpy(node->name,"stdout");
     node->mask = 0666;
     node->uid = 0;
@@ -415,6 +417,7 @@ fs_node_t* create_stdout_device(){
 
 fs_node_t* create_stderr_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0, sizeof(fs_node_t));
     strcpy(node->name,"stderr");
     node->mask = 0666;
     node->uid = 0;
@@ -434,6 +437,7 @@ fs_node_t* create_stderr_device(){
 
 fs_node_t* create_tty_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0, sizeof(fs_node_t));
     strcpy(node->name,"tty0");
     node->mask = 0666;
     node->uid = 0;

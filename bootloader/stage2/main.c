@@ -56,11 +56,11 @@ void* load_initrd(uint8_t drive_num){
         dap.size = 0x10;
         dap.sector_count = 64;
         dap.buffer = linear_to_segoff((uint32_t)(uint64_t)initrd_read_buffer);
-        dap.lba = start_lba + i;
+        dap.lba = start_lba + (i * 64);
         bios_read_disk((uint32_t)(uint64_t)&dap, drive_num);
-        void* buffer = malloc(65536);
+        void* buffer = malloc(32768);
         if(buffer_ptr == NULL) buffer_ptr = buffer;
-        memcpy(buffer,initrd_read_buffer,65536);
+        memcpy(buffer,initrd_read_buffer,32768);
     }
     return buffer_ptr;
 }

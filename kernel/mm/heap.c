@@ -103,7 +103,6 @@ void* malloc(uint64_t size){
     spinlock_acquire(&heap_lock);
 
     void* ret = malloc_internal(size);
-    memset(ret,0,size);
 
     spinlock_release(&heap_lock);
     return ret;

@@ -7,6 +7,7 @@
 
 unsigned char* bitmap;
 uint64_t frame_count;
+uint64_t next_free_hint = 0;
 
 #define INDEX_FROM_BIT(a) (a / 8)
 #define OFFSET_FROM_BIT(a) (a % 8)
@@ -41,17 +42,20 @@ void pmm_init(bootinfo_t* bootinfo){
     memset((void*)bitmap,0,bitmap_size);   // mark all memory as free
 
     int usedframes = (((uint64_t)bootinfo->reserved_mem_end + bitmap_size) + 4095) / 4096;
-    for(int i = 0; i < usedframes; i++){
+    int i;
+    for(i = 0; i < usedframes; i++){
         set_frame_bit(i);
     }
+    next_free_hint = i;
 }
 
 atomic_flag pmm_lock = ATOMIC_FLAG_INIT;
 
 void* allocate_frame() {
     spinlock_acquire(&pmm_lock);
-    for (uint64_t i = 0; i < frame_count; i++) {
+    for (uint64_t i = next_free_hint; i < frame_count; i++) {
         if (!test_frame_bit(i)) {
+            next_free_hint = i;
             set_frame_bit(i);
             spinlock_release(&pmm_lock);
             return (void*)(i * 4096);
@@ -64,8 +68,9 @@ void* allocate_frame() {
 
 void* allocate_frames(uint64_t count) {
     spinlock_acquire(&pmm_lock);
-    for (uint64_t i = 0; i < frame_count - count; i++) {
+    for (uint64_t i = next_free_hint; i < frame_count - count; i++) {
         if (!test_frame_bit(i)) {
+            next_free_hint = i;
             unsigned char success = 1;
             for (uint64_t c = 0; c < count; c++) {
                 if (test_frame_bit(i + c)) {
@@ -88,7 +93,12 @@ void* allocate_frames(uint64_t count) {
 
 void free_frame(void* frame) {
     spinlock_acquire(&pmm_lock);
-    clear_frame_bit((uint64_t)frame / 4096);
+    
+    uint64_t index = (uint64_t)frame / 4096;
+    if(index < next_free_hint) next_free_hint = index; 
+
+    clear_frame_bit((uint64_t)index);
+    
     spinlock_release(&pmm_lock);
 }
 

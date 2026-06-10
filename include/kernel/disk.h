@@ -2,6 +2,8 @@
 #define DISK_H
 #include <stdint.h>
 
+#define BYTES_PER_SECTOR 512
+
 typedef void (*disk_access)(int internal_no, uint64_t lba, uint16_t sector_count, void* buffer);
 
 enum disk_type{

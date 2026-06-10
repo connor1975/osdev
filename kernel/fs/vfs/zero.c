@@ -22,6 +22,7 @@ uint32_t read_zero(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buf
 
 fs_node_t* create_zero_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0,sizeof(fs_node_t));
     strcpy(node->name,"zero");
     node->mask = 0666;
     node->uid = 0;
@@ -41,6 +42,7 @@ fs_node_t* create_zero_device(){
 
 fs_node_t* create_null_device(){
     fs_node_t* node = malloc(sizeof(fs_node_t));
+    memset(node,0,sizeof(fs_node_t));
     strcpy(node->name,"null");
     node->mask = 0666;
     node->uid = 0;

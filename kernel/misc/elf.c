@@ -78,6 +78,8 @@ void push_args(task_t* task, int argc, char** argv, char** envp) {
     task->context.rdi = argc;
     task->context.rsi = (uint64_t)argvret;
     task->context.rdx = (uint64_t)envpret;
+    task->context.rsp &= ~15ULL; // force 16 byte alignment
+    task->context.rsp-=8;
 }
 
 int exec_elf(task_t* task, void* elf_data, char** argv, char** envp){

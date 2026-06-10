@@ -12,6 +12,7 @@
 #include <ramdisk.h>
 #include <ahci.h>
 #include <fs/fat.h>
+#include <fs/ext2.h>
 #include <rtl8139.h>
 #include <pipe.h>
 #include <tty.h>
@@ -39,14 +40,10 @@ int main(bootinfo_t* bootinfo){
     kbd_init();
     init_pci_devices();
 
-    // int ramdisk = init_ramdisk(phys_to_virt(bootinfo->initrd));
-    // vfs_mount("/",ext2_mount_partition(ramdisk,0));
-
-    uint32_t lba = 0;
-    get_partition_lba(0,0,&lba);
-    vfs_mount("/",fat_mount_partition(0,lba));
+    int ramdisk = init_ramdisk(phys_to_virt(bootinfo->initrd));
+    vfs_mount("/",ext2_mount_partition(ramdisk,0));
     devfs_init();
-
+    
     multitasking_init();
     irq_enable();
 

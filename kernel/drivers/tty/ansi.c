@@ -121,6 +121,53 @@ int handle_ansi(tty_t* tty, uint8_t c){
                             tty_clear_line_from_cursor(tty);
                         }
                         break;
+                    case 'm': {
+                        int bright = 0;
+                        uint32_t new_fg = tty->fg;
+                        uint32_t new_bg = tty->bg;
+                        
+                        if(tty->ansi_param_count == 0){
+                            tty->fg = ansi_colours[7];
+                            tty->bg = ansi_colours[0];
+                            break;
+                        }
+
+                        if(tty->ansi_param_count == 1 && tty->ansi_params[0] == 0){
+                            tty->fg = ansi_colours[7];
+                            tty->bg = ansi_colours[0];
+                            break;
+                        }
+
+                        for(int i = 0; i < tty->ansi_param_count; i++){
+                            if(tty->ansi_params[i] == 1) {
+                                bright = 1;
+                                continue;
+                            }
+                            
+                            int colour = tty->ansi_params[i];
+                            if(colour >= 30 && colour <= 37){
+                                new_fg = ansi_colours[colour - 30 + (bright ? 8 : 0)];
+                            } else if(colour >= 40 && colour <= 47){
+                                new_bg = ansi_colours[colour - 40 + (bright ? 8 : 0)];
+                            }
+                        
+                            if(colour == 39){
+                                new_fg = ansi_colours[7];
+                            }
+                            if(colour == 49){
+                                new_bg = ansi_colours[0];
+                            }
+
+                            if(colour >= 90 && colour <= 97)
+                                new_fg = ansi_colours[colour - 90 + 8];
+
+                            if(colour >= 100 && colour <= 107)
+                                new_bg = ansi_colours[colour - 100 + 8];
+                        }
+                        tty->fg = new_fg;
+                        tty->bg = new_bg;
+                    break;
+                    }
                 }
                 return 1;
             }

@@ -11,6 +11,7 @@
 struct ext2_node_cache_entry {
     uint32_t inode;
     fs_node_t* node;
+    ext2_inode_t* inode_data;
     struct ext2_node_cache_entry* next;
 };
 
@@ -27,18 +28,18 @@ struct ext2_volume{
     struct ext2_node_cache_entry* node_cache;
 };
 
-fs_node_t* ext2_find_cached_node(struct ext2_volume* volume, int inode){
+struct ext2_node_cache_entry* ext2_find_cached_node(struct ext2_volume* volume, int inode){
     struct ext2_node_cache_entry* ptr = volume->node_cache;
     while(ptr != NULL){
         if(ptr->inode == inode){
-            return ptr->node;
+            return ptr;
         }
         ptr = ptr->next;
     }
     return NULL;
 }
 
-void ext2_node_cache_append(struct ext2_volume* volume, fs_node_t* node){
+void ext2_node_cache_append(struct ext2_volume* volume, fs_node_t* node, ext2_inode_t* inode){
     struct ext2_node_cache_entry* ptr = volume->node_cache;
     while(ptr->next != NULL){
         ptr = ptr->next;
@@ -48,29 +49,24 @@ void ext2_node_cache_append(struct ext2_volume* volume, fs_node_t* node){
     new_entry->inode = node->inode;
     new_entry->next = NULL;
     new_entry->node = node;
+    new_entry->inode_data = inode;
     ptr->next = new_entry;
 }
 
 void ext2_volume_read_sectors(struct ext2_volume* volume, int lba, int sector_count, void* buffer){
-    read_disk(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    read_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
 }
 
 void ext2_volume_read(struct ext2_volume* volume, int offset, int size, void* buffer){
-    int lba_off = offset / 512;
-    int byte_off = offset % 512;
-    int sector_count = ((byte_off + size) + (512 - 1)) / 512;
-    void* sector_buffer = malloc(512 * sector_count);
-    ext2_volume_read_sectors(volume,lba_off,sector_count,sector_buffer);
-    memcpy(buffer,sector_buffer + byte_off,size);
-    free(sector_buffer);
+    read_disk(volume->disk_no, offset,size,buffer);
 }
 
 void ext2_volume_read_block(struct ext2_volume* volume, int block, void* buffer){
-    read_disk(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,volume->sectors_per_block,buffer);
+    read_disk_lba(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,volume->sectors_per_block,buffer);
 }
 
 void ext2_volume_read_blocks(struct ext2_volume* volume, int block, int count, void* buffer){
-    read_disk(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,count * volume->sectors_per_block,buffer);
+    read_disk_lba(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,count * volume->sectors_per_block,buffer);
 }
 
 void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, int block_index, void* buffer){
@@ -119,6 +115,12 @@ void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, int 
 }
 
 ext2_inode_t* ext2_read_inode(struct ext2_volume* volume, int inode){    
+
+    struct ext2_node_cache_entry* cache_entry = ext2_find_cached_node(volume,inode);
+    if(cache_entry != NULL){
+        return cache_entry->inode_data;
+    }
+
     int block_group = (inode - 1) / volume->superblock.inodes_per_group;
     int inode_table_index = (inode - 1) % volume->superblock.inodes_per_group;
     
@@ -163,7 +165,6 @@ uint32_t ext2_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buf
 
     memcpy(buffer,block_buffer + byte_offset,size);
     free(block_buffer);
-    free(file_inode);
     return size;
 }
 
@@ -189,14 +190,12 @@ static struct dirent* ext2_readdir(fs_node_t *node, uint32_t index){
         if(i == index){
             if(file_dirent->inode == 0) {
                 free(buffer);
-                free(file_inode);
                 return NULL;
             }
             memcpy(dirent.name,file_dirent->name,file_dirent->name_length);
             dirent.name[file_dirent->name_length] = 0;
             dirent.ino = file_dirent->inode;
 
-            free(file_inode);
             free(buffer);            
             return &dirent;
         }
@@ -205,7 +204,6 @@ static struct dirent* ext2_readdir(fs_node_t *node, uint32_t index){
         file_dirent = buffer + offset;
         i++;
     }
-    free(file_inode);
     free(buffer);
     return NULL;
 }
@@ -256,20 +254,21 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
     int i = 0;
     while(offset < dir_inode->size){
         if(file_dirent->inode != 0) {
-                if(file_dirent->name_length == strlen(name) && memcmp(name,file_dirent->name,file_dirent->name_length) == 0){
+            if(file_dirent->name_length == strlen(name) && memcmp(name,file_dirent->name,file_dirent->name_length) == 0){
                 
-                fs_node_t* file = ext2_find_cached_node(volume,file_dirent->inode);
+                struct ext2_node_cache_entry* cache_entry = ext2_find_cached_node(volume,file_dirent->inode);
 
-                if(file == NULL){
+                fs_node_t* file = NULL;
+                if(cache_entry == NULL){
                     ext2_inode_t* file_inode = ext2_read_inode(volume,file_dirent->inode);
                     file = ext2_gen_fs_node(volume,file_inode,file_dirent);
-                    free(file_inode);
 
-                    ext2_node_cache_append(volume,file);
+                    ext2_node_cache_append(volume,file,file_inode);
+                }else{
+                    file = cache_entry->node;
                 }
 
                 free(buffer);
-                free(dir_inode);
                 return file;
             }           
         }
@@ -279,7 +278,6 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
         i++;
     }
     free(buffer);
-    free(dir_inode);
     return NULL;
 }
 
@@ -326,12 +324,11 @@ fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
     root_node->finddir = ext2_finddir;
     root_node->inode = 2;
 
-    free(root_inode);
-
     volume->node_cache = malloc(sizeof(struct ext2_node_cache_entry));
     volume->node_cache->next = NULL;
     volume->node_cache->node = root_node;
     volume->node_cache->inode = 2;
+    volume->node_cache->inode_data = root_inode;
 
     return root_node;
 }

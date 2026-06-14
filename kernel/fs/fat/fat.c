@@ -16,7 +16,7 @@
 void fat_truncate(fs_node_t* file, int length);
 
 void fat_volume_read_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
-    read_disk(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    read_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
 }
 
 void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
@@ -30,18 +30,11 @@ void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* b
 }
 
 void fat_volume_write_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
-    write_disk(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    write_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
 }
 
 void fat_volume_write(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
-    int lba_off = offset / volume->bootsector->bytes_per_sector;
-    int byte_off = offset % volume->bootsector->bytes_per_sector;
-    int sector_count = ((byte_off + size) + (volume->bootsector->bytes_per_sector - 1)) / volume->bootsector->bytes_per_sector;
-    void* sector_buffer = malloc(volume->bootsector->bytes_per_sector * sector_count);
-    fat_volume_read_sectors(volume,lba_off,sector_count,sector_buffer);
-    memcpy(sector_buffer + byte_off,buffer,size);
-    fat_volume_write_sectors(volume,lba_off,sector_count,sector_buffer);
-    free(sector_buffer);
+    write_disk(volume->disk_no,offset,size,buffer);
 }
 
 uint32_t cluster_to_lba(fat_mounted_volume_t* volume, uint32_t cluster){

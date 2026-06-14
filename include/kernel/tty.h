@@ -28,8 +28,8 @@ typedef struct {
     uint32_t cursor_x;
     uint32_t cursor_y;
 
-    uint32_t default_bg;
-    uint32_t default_fg;
+    uint32_t bg;
+    uint32_t fg;
 
     int mode;
     int echo;

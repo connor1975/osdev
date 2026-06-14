@@ -1,19 +1,33 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
+
+static char* target_buffer = NULL;
+static char buffer[4096];
+static int buffer_ptr = 0;
+static int len = 0;
 
 const char* numchars = "0123456789ABCDEF";
 
+static int mode = 0; // print
+
+static void putchar_buffer(char c){
+    if(c == 0) len = buffer_ptr;
+    buffer[buffer_ptr] = (char)c;
+    buffer_ptr++;
+}
+
 void printf_string(char* string){
     while(*string){
-        putchar(*string);
+        putchar_buffer(*string);
         string++;
     }
 }
 
 void printf_unsigned(uint64_t num, int base){
     if(num == 0){
-        putchar('0');
+        putchar_buffer('0');
         return;
     }
     char buffer[64];
@@ -27,13 +41,13 @@ void printf_unsigned(uint64_t num, int base){
         len++;
     }
     for(int i = 0; i < len; i++){
-        putchar(buffer[pos + i]);
+        putchar_buffer(buffer[pos + i]);
     }
 }
 
 void printf_signed(int64_t num, int base){
     if(num < 0){
-        putchar('-');
+        putchar_buffer('-');
         printf_unsigned(-num,base);
     }else{
         printf_unsigned(num,base);
@@ -44,6 +58,8 @@ void printf_signed(int64_t num, int base){
 #define PRINTF_LENGTH_LONG_LONG 1
 
 void vprintf(char* fmt, va_list valist){
+    buffer_ptr = 0;
+    len = 0;
     int length;
     while(*fmt){
         if(*fmt == '%'){
@@ -116,28 +132,50 @@ void vprintf(char* fmt, va_list valist){
                 printf_string(va_arg(valist,char*));
                 break;
                 case 'c':
-                putchar(va_arg(valist,int));
+                putchar_buffer(va_arg(valist,int));
                 break;
                 case 'p':
-                putchar('0');
-                putchar('x');
+                putchar_buffer('0');
+                putchar_buffer('x');
                 printf_unsigned((uint64_t)va_arg(valist,void*),16);
                 break;
                 case '%':
-                putchar('%');
+                putchar_buffer('%');
                 break;
             }
             fmt++;
         }else{
-            putchar(*fmt);
+            putchar_buffer(*fmt);
             fmt++;
         }
+    }
+    putchar_buffer(0);
+    if(mode == 0){
+        char* ptr = buffer;
+        while(*ptr != 0){
+            putchar(*ptr);
+            ptr++;
+        }
+    } else if(mode == 1){
+        strcpy(target_buffer,(const char*)buffer);
     }
 }
 
 void printf(char* fmt, ...){
     va_list valist;
     va_start(valist,fmt);
+    mode = 0;
     vprintf(fmt,valist);
     va_end(valist);
+}
+
+int sprintf(char *str, char *fmt, ...){
+    va_list valist;
+    va_start(valist,fmt);
+    mode = 1;
+    target_buffer = str;
+    vprintf(fmt,valist);
+    va_end(valist);
+    mode = 0;
+    return len;
 }

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <disk.h>
 
 fs_node_t* dev_node;
 
@@ -73,4 +74,5 @@ void devfs_init(){
 
     zero_init();
     tty_fs_init();
+    create_disk_devices();
 }

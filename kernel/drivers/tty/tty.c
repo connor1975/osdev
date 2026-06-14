@@ -17,7 +17,7 @@ int num_ttys;
 
 void tty_render_cell(tty_t* tty, uint32_t index){
     char c = tty->cells[index].c;
-    render_psf_char(tty->default_fg, tty->default_bg,(index % tty->width) * font_width, (index / tty->width) * font_height,c);
+    render_psf_char(tty->cells[index].fg,tty->cells[index].bg,(index % tty->width) * font_width, (index / tty->width) * font_height,c);
 }
 
 void draw_cursor(tty_t* tty){
@@ -49,7 +49,7 @@ void handle_newline(tty_t* tty){
         memmove(tty->cells, (char*)tty->cells + (tty->width * sizeof(tty_screen_cell_t)), (sizeof(tty_screen_cell_t) * tty->cell_count) - (tty->width * sizeof(tty_screen_cell_t)));
         tty_screen_cell_t* bottom_row = (void*)((char*)tty->cells + ((sizeof(tty_screen_cell_t) * tty->width) * (tty->height - 1)));
         for(int i = 0; i < tty->width; i++){
-            bottom_row[i].bg = tty->default_bg;
+            bottom_row[i].bg = tty->bg;
             bottom_row[i].fg = 0;
             bottom_row[i].c = 0;
         }
@@ -84,8 +84,8 @@ void tty_writechar(tty_t* tty,uint8_t c){
 
     int index = (tty->cursor_y * tty->width) + tty->cursor_x;
     tty->cells[index].c = c;
-    tty->cells[index].fg = tty->default_fg;
-    tty->cells[index].bg = tty->default_bg;
+    tty->cells[index].fg = tty->fg;
+    tty->cells[index].bg = tty->bg;
     tty->cursor_x++;
     if(tty == current_tty){
         tty_render_cell(tty,index);
@@ -131,34 +131,30 @@ int tty_ring_pop(tty_t* tty, uint8_t* out) {
     return 0;
 }
 
-void tty_clear_line_from_cursor(tty_t* tty){
-    uint32_t index = (tty->cursor_y * tty->width) + tty->cursor_x;
-    for(int i = index; i < ((tty->cursor_y + 1) * tty->width); i++){
+void tty_erase_range(tty_t* tty, uint32_t start_index, uint32_t end_index){
+    for(int i = start_index; i < end_index; i++){
         tty->cells[i].c = 0;
-        tty->cells[i].fg = tty->default_fg;
-        tty->cells[i].bg = tty->default_bg;
+        tty->cells[i].fg = tty->fg;
+        tty->cells[i].bg = tty->bg;
         tty_render_cell(tty,i);
     }
+}
+
+void tty_clear_line_from_cursor(tty_t* tty){
+    int start = (tty->cursor_y * tty->width) + tty->cursor_x;
+    int end = start + (tty->width - tty->cursor_x);
+    tty_erase_range(tty, start, end);
 }
 
 void tty_clear_line(tty_t* tty){
-    uint32_t index = (tty->cursor_y * tty->width);
-    for(int i = index; i < index + tty->width; i++){
-        tty->cells[i].c = 0;
-        tty->cells[i].fg = tty->default_fg;
-        tty->cells[i].bg = tty->default_bg;
-        tty_render_cell(tty,i);
-    }
+    int start = tty->cursor_y * tty->width;
+    int end = start + tty->width;
+    tty_erase_range(tty, start, end);
 }
 
 void tty_erase_from_cursor(tty_t* tty){
-    uint32_t index = (tty->cursor_y * tty->width) + tty->cursor_x;
-    for(int i = index; i < tty->cell_count; i++){
-        tty->cells[i].c = 0;
-        tty->cells[i].fg = tty->default_fg;
-        tty->cells[i].bg = tty->default_bg;
-        tty_render_cell(tty,i);
-    }
+    int start = (tty->cursor_y * tty->width) + tty->cursor_x;
+    tty_erase_range(tty, start, tty->cell_count);
 }
 
 void tty_raw_input_send_escape(uint8_t byte){
@@ -283,8 +279,8 @@ void tty_set_cursor_visibility(tty_t* tty, int visible){
 void tty_clear_screen(tty_t* tty){
     for(int i = 0; i < tty->cell_count; i++){
         tty->cells[i].c = 0;
-        tty->cells[i].fg = tty->default_fg;
-        tty->cells[i].bg = tty->default_bg;
+        tty->cells[i].fg = tty->fg;
+        tty->cells[i].bg = tty->bg;
     }
     if(tty == current_tty) redraw_tty_screen(tty);
 }
@@ -475,13 +471,15 @@ void tty_init(){
         tty->cells = calloc(tty->cell_count, sizeof(tty_screen_cell_t));
         tty->cursor_x = 0;
         tty->cursor_y = 0;
-        tty->default_bg = BLACK;
-        tty->default_fg = WHITE;
+        tty->fg = ansi_colours[7];
+        tty->bg = ansi_colours[0];
         tty->mode = TTY_CANONICAL;
         tty->cursor_visible = 1;
         tty->echo = 1;
         initialise_wait_queue(&tty->line_wait_queue);
         initialise_wait_queue(&tty->ring_wait_queue);
+        tty_clear_screen(tty);
     }
     current_tty = ttys[0];
+    redraw_tty_screen(current_tty);
 }

@@ -15,7 +15,7 @@ int has_mbr_signature(void* bootsector){
 
 void mbr_enumerate_partitions(int disk){
     void* bootsector = malloc(512);
-    read_disk(disk,0,1,bootsector);
+    read_disk_lba(disk,0,1,bootsector);
     if(!has_mbr_signature(bootsector)){
         free(bootsector);
         printf("Disk %d has invalid mbr signature\n", disk);
@@ -34,7 +34,7 @@ void mbr_enumerate_partitions(int disk){
 int get_partition_lba(int disk, int partition_no, uint32_t* lba){
     *lba = 0;
     void* bootsector = malloc(512);
-    read_disk(disk,0,1,bootsector);
+    read_disk_lba(disk,0,1,bootsector);
     if(!has_mbr_signature(bootsector)){
         free(bootsector);
         return 1;

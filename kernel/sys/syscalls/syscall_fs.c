@@ -10,7 +10,6 @@
 #include <errno.h>
 
 uint64_t sys_write(int fd, char* buffer, uint64_t count){
-    irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     struct file_descriptor* file_descriptor = current_task->open_files[fd];
     if(file_descriptor == NULL) return -EBADF;
@@ -30,7 +29,6 @@ uint64_t sys_write(int fd, char* buffer, uint64_t count){
 }
 
 uint64_t sys_read(int fd, char* buffer, uint64_t count){
-    irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     struct file_descriptor* file_descriptor = current_task->open_files[fd];
     if(file_descriptor == NULL) return -EBADF;
@@ -46,7 +44,6 @@ uint64_t sys_read(int fd, char* buffer, uint64_t count){
 }
 
 uint64_t sys_open(char* path, int flags){
-    irq_enable();
     if(flags & O_CREAT && find_file(path) == NULL){
         create_file_fs(find_file_dir(path),get_filename_from_path(path));
     }
@@ -54,7 +51,6 @@ uint64_t sys_open(char* path, int flags){
 }
 
 uint64_t sys_close(int fd){
-    irq_enable();
     return task_close_file((task_t*)current_task,fd);
 }
 
@@ -98,7 +94,6 @@ uint64_t sys_rename(char* oldname, char* newname){
 #define SEEK_END 2
 
 uint64_t sys_lseek(int fd_num, uint64_t offset, uint64_t whence){
-    irq_enable();
     if(fd_num >= MAX_OPEN_FILES) return -EBADF;
     struct file_descriptor* fd = current_task->open_files[fd_num];
     if(fd == NULL) return -EBADF;
@@ -117,7 +112,6 @@ uint64_t sys_lseek(int fd_num, uint64_t offset, uint64_t whence){
 }
 
 uint64_t sys_getcwd(char* buffer, uint64_t size){
-    irq_enable();
     if(size == 0) return -EINVAL;
     if(buffer == NULL) return -EFAULT;
     int length = strlen(current_task->cwd) + 1;
@@ -130,7 +124,6 @@ uint64_t sys_getcwd(char* buffer, uint64_t size){
 }
 
 uint64_t sys_chdir(char* path){
-    irq_enable();
     if(path == NULL) return -EFAULT;
     return task_chdir(path);
 }
@@ -185,7 +178,6 @@ uint64_t stat_internal(fs_node_t* node,struct stat* stat){
 }
 
 uint64_t sys_stat(char* path, void* buf){
-    irq_enable();
     fs_node_t* node = find_file(path);
     if(node == NULL) return -ENOENT;
     struct stat* stat = buf;
@@ -193,7 +185,6 @@ uint64_t sys_stat(char* path, void* buf){
 }
 
 uint64_t sys_lstat(char* path, void* buf){
-    irq_enable();
     fs_node_t* node = find_file(path);
     if(node == NULL) return -ENOENT;
     struct stat* stat = buf;
@@ -201,7 +192,6 @@ uint64_t sys_lstat(char* path, void* buf){
 }
 
 uint64_t sys_fstat(int fd, void* buf){
-    irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[fd] == NULL) return -EBADF;
     fs_node_t* node = current_task->open_files[fd]->file;
@@ -215,7 +205,6 @@ struct iovec {
 };
 
 uint64_t sys_writev(int fd, const struct iovec *iov, int iovcnt){
-    irq_enable();
     int count = 0;
     for(int i = 0; i < iovcnt; i++){
         int len = sys_write(fd,iov[i].iov_base,iov[i].iov_len);
@@ -226,7 +215,6 @@ uint64_t sys_writev(int fd, const struct iovec *iov, int iovcnt){
 }
 
 uint64_t sys_readdir(int fd, int index, struct dirent* buffer){
-    irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[fd] == NULL) return -EBADF;
     fs_node_t* node = current_task->open_files[fd]->file;
@@ -243,7 +231,6 @@ uint64_t sys_readdir(int fd, int index, struct dirent* buffer){
 }
 
 uint64_t sys_ioctl(int fd, unsigned long request, void* argp){
-    irq_enable();
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[fd] == NULL) return -EBADF;
     fs_node_t* node = current_task->open_files[fd]->file;
@@ -252,7 +239,6 @@ uint64_t sys_ioctl(int fd, unsigned long request, void* argp){
 }
 
 uint64_t sys_dup(int oldfd){
-    irq_enable();
     if(oldfd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[oldfd] == NULL) return -EBADF;
 
@@ -267,7 +253,6 @@ uint64_t sys_dup(int oldfd){
 }
 
 uint64_t sys_dup2(int oldfd, int newfd){
-    irq_enable();
     if(oldfd == newfd) return -EINVAL;
     if(newfd >= MAX_OPEN_FILES) return -EBADF;
     if(oldfd >= MAX_OPEN_FILES) return -EBADF;

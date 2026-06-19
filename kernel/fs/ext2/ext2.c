@@ -283,6 +283,7 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
 
 fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
     struct ext2_volume* volume = malloc(sizeof(struct ext2_volume));
+    memset(volume,0,sizeof(struct ext2_volume));
     volume->disk_no = disk_no;
     volume->partition_offset = partition_lba;
     

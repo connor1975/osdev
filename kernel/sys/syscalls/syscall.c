@@ -51,6 +51,12 @@ extern uint64_t sys_geteuid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r
 extern uint64_t sys_getgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_getegid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_getuid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_sigaction(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_sigprocmask(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_sigreturn(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_getpgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_setpgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_nanosleep(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
 syscall syscall_table[] = {
     (syscall)sys_exit, // 0
@@ -96,6 +102,12 @@ syscall syscall_table[] = {
     (syscall)sys_getgid, //40
     (syscall)sys_getegid, //41
     (syscall)sys_getuid, // 42
+    (syscall)sys_sigaction, // 43
+    (syscall)sys_sigprocmask, // 44
+    (syscall)sys_sigreturn, // 45
+    (syscall)sys_getpgid, // 46
+    (syscall)sys_setpgid, // 47
+    (syscall)sys_nanosleep, // 48
     0
 };
 

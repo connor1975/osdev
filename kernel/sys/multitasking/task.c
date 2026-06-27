@@ -63,6 +63,7 @@ int create_kernel_task(void* func){
     new_task->cr3 = (uint64_t)allocate_new_pd();
     new_task->user = 0;
     new_task->cwd = malloc(2);
+    new_task->pgid = new_task->id;
     memcpy(new_task->cwd,"/\0",2);
 
     task_add(new_task);
@@ -94,6 +95,7 @@ int spawn_elf(fs_node_t* file,char** argv, char** envp){
 
     newtask->fs_base = 0;
     newtask->exit_code = 0;
+    newtask->pgid = newtask->id;
 
     task_add(newtask);
     irq_restore(flags);
@@ -125,6 +127,7 @@ int task_fork(){
     new_task->context.rsp = syscall_context->rsp;
     new_task->context.rip = syscall_context->rip;
     new_task->context.rax = 0;
+    new_task->pgid = current_task->pgid;
 
     void* newpd = allocate_new_pd();
     clone_pd(phys_to_virt(newpd));
@@ -152,6 +155,33 @@ void task_exit(int exit_code){
     kill_task(current_task->id,exit_code);
 }
 
+int kill(int pid, int sig){
+    if(pid == 0){
+        task_t* task = task_list;
+        while(task != NULL){
+            if(task->pgid == current_task->pgid && task->id != current_task->id){
+                kill_task(task->id,sig);
+            }
+            task = task->next;
+        }
+        return 0;
+    }
+    if(pid < 0){
+        task_t* task = task_list;
+        while(task != NULL){
+            if(task->pgid == -pid){
+                kill_task(task->id,sig);
+            }
+            task = task->next;
+        }
+        return 0;
+    }
+    task_t* task = find_task(pid);
+    if(task == NULL) return -ESRCH;
+    kill_task(task->id,sig);
+    return 0;
+}
+
 void multitasking_init(){
     uint64_t cr3;
     asm volatile ("movq %%cr3, %0" : "=r" (cr3));
@@ -165,6 +195,7 @@ void multitasking_init(){
     kernel_task.rsp0 = 0;
     kernel_task.id = alloc_pid();
     kernel_task.state = TASK_RUNNING;
+    kernel_task.pgid = kernel_task.id;
     
     kernel_task.cwd = malloc(2);
     kernel_task.cwd[0] = '/';

@@ -13,8 +13,12 @@ typedef struct{
     uint32_t fg;
 } tty_screen_cell_t;
 
+#define TTY_CURRENT 1234
+
 #define TTY_CANONICAL 1
 #define TTY_RAW 2
+
+#define TTY_COUNT 3
 
 #define INPUT_BUFFER_SIZE 4096
 
@@ -52,6 +56,8 @@ typedef struct {
     int ansi_params[8];
     int ansi_param_count;
     int ansi_private;
+
+    int foreground_pgid;
 } tty_t;
 
 void tty_erase_from_cursor(tty_t* tty);
@@ -69,6 +75,5 @@ void tty_clear_screen(tty_t* tty);
 
 tty_t* current_tty;
 tty_t** ttys;
-int num_ttys;
 
 #endif 

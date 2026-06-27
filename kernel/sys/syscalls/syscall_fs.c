@@ -234,6 +234,7 @@ uint64_t sys_ioctl(int fd, unsigned long request, void* argp){
     if(fd >= MAX_OPEN_FILES) return -EBADF;
     if(current_task->open_files[fd] == NULL) return -EBADF;
     fs_node_t* node = current_task->open_files[fd]->file;
+    if(node->ioctl == NULL) return -ENOTTY;
     uint64_t ret = ioctl_fs(node,request,argp);
     return ret;
 }

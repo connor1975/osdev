@@ -65,10 +65,14 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
 }
 
 uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
-    int state;
     if(pid > 0) {
-        while((state = get_task_state(pid)) != TASK_DEAD);
         task_t* task = find_task(pid);
+        if(task == NULL) return -ESRCH;
+
+        while(task->state != TASK_DEAD){
+            wait_queue_sleep(&task->exit_waiters);
+        }
+        
         if(status != NULL) *status = (task->exit_code & 0xff) << 8;
         return pid;
     }else{
@@ -90,12 +94,35 @@ uint64_t sys_get_pid(){
     return current_task->id;
 }
 
-uint64_t sys_kill(uint64_t id){
-    if(find_task(id) == NULL) return -ESRCH;
-    kill_task(id, 137);
-    return 0;
+uint64_t sys_getpgid(int pid){
+    if(pid == 0){
+        return current_task->pgid;
+    }else{
+        task_t* task = find_task(pid);
+        if(task == NULL){
+            return -ESRCH;
+        }
+        return task->pgid;
+    }
 }
 
+uint64_t sys_setpgid(int pid, int pgid){
+    if(pgid < 0)
+        return -EINVAL;
+
+    if(pid == 0)
+        pid = current_task->id;
+
+    if(pgid == 0)
+        pgid = pid;
+
+    task_t *task = find_task(pid);
+    if(task == NULL)
+        return -ESRCH;
+
+    task->pgid = pgid;
+    return 0;
+}
 uint64_t sys_prctl(int code, void* addr){
     switch(code){
         case 0x1002:

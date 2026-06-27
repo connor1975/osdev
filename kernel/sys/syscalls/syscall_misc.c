@@ -7,13 +7,20 @@
 #include <stdint.h>
 #include <errno.h>
 
-struct timeval {
-    uint64_t tv_sec;	
-    uint32_t tv_usec;
-};
+extern volatile uint64_t ticks;
+
+uint64_t sys_nanosleep(struct timespec *req, struct timespec *rem) {
+    uint64_t ms = (req->tv_sec * 1000) + (req->tv_nsec / 1000000);
+    sleep(ms);
+    if (rem != NULL) {
+        rem->tv_sec = 0;
+        rem->tv_nsec = 0;
+    }
+    return 0;
+}
 
 uint64_t sys_gettimeofday(struct timeval* tv, void* tz){
-    tv->tv_usec = 0;
+    tv->tv_usec = (ticks * 1000) % 1000000;
     tv->tv_sec = get_unix_time();
     return 0;
 }

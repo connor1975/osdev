@@ -26,7 +26,10 @@ typedef struct task{
     struct task* next;
     int user;
     uint64_t cr3;
+    
     int id;
+    int pgid;
+
     uint64_t rsp0;
     void* brk_start;
     void* brk;

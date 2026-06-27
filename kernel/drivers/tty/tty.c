@@ -10,10 +10,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <multitasking.h>
+#include <stdio.h>
+#include <sys/signal.h>
 
 tty_t* current_tty = NULL;
 tty_t** ttys = NULL;
-int num_ttys;
 
 void tty_render_cell(tty_t* tty, uint32_t index){
     char c = tty->cells[index].c;
@@ -208,10 +209,23 @@ void tty_handle_input_raw(input_event_t input_event){
 
 void tty_handle_input_canonical(input_event_t input_event){
     if(current_tty->line_ready) wait_queue_wake_one(&current_tty->line_wait_queue);;
+    
+    if(input_event.ctrl_pressed) {
+        input_event.ascii = input_event.ascii & 0x1f; // Convert to control code
+    }
+
     if(input_event.ascii != 0){
         char c = input_event.ascii;
         
         switch(c){
+            case 0x03:
+            current_tty->line_buffer[current_tty->line_buffer_write_index] = 0;
+            current_tty->line_buffer_write_index = 0;
+            current_tty->line_buffer_read_index = 0;
+            current_tty->line_ready = 0;
+            kill(-current_tty->foreground_pgid, SIGINT);
+            return; 
+
             case 0x7f:
             if(current_tty->line_buffer_write_index > 0){
                 if(current_tty->cursor_visible && current_tty->echo) clear_cursor();
@@ -286,12 +300,18 @@ void tty_clear_screen(tty_t* tty){
 }
 
 int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
+    if(node == NULL) return -EBADF;
+    
+    tty_t* tty;
+    if(node->impl == TTY_CURRENT) tty = current_tty;
+    else tty = ttys[node->impl];
+    
     switch(request){
         case TIOCGWINSZ:
             if(argp == NULL) return -EINVAL;
             struct winsize* winsize = argp;
-            winsize->ws_row = current_tty->height;
-            winsize->ws_col = current_tty->width;
+            winsize->ws_row = tty->height;
+            winsize->ws_col = tty->width;
             winsize->ws_xpixel = framebuffer_width;
             winsize->ws_ypixel = framebuffer_height;
             return 0;
@@ -302,7 +322,7 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
             termios_p->c_iflag = 0;
             termios_p->c_oflag = 0;
             termios_p->c_cflag = 0;
-            termios_p->c_lflag = 0 | (current_tty->mode == TTY_CANONICAL ? ICANON : 0) | (current_tty->echo ? ECHO : 0);
+            termios_p->c_lflag = 0 | (tty->mode == TTY_CANONICAL ? ICANON : 0) | (tty->echo ? ECHO : 0);
             if (termios_p->c_lflag & ICANON) {
                 termios_p->c_iflag |= ICRNL;
                 termios_p->c_oflag |= OPOST;
@@ -318,22 +338,43 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
             if(argp == NULL) return -EINVAL;
             struct termios* new_termios = argp;
             if((new_termios->c_lflag & ICANON) != 0){
-                current_tty->mode = TTY_CANONICAL;
+                tty->mode = TTY_CANONICAL;
             }else{
-                current_tty->mode = TTY_RAW;
+                tty->mode = TTY_RAW;
             }
             if((new_termios->c_lflag & ECHO) != 0){
-                current_tty->echo = 1;
+                tty->echo = 1;
             }else{
-                current_tty->echo = 0;
+                tty->echo = 0;
             }
             return 0;
+        break;
+        case TIOCGPGRP:
+            if(argp == NULL) 
+                return -EINVAL;
+            
+            int* pgid_ptr = argp;
+            *pgid_ptr = tty->foreground_pgid;
+            return 0;
+        break;
+        case TIOCSPGRP:
+            if(argp == NULL) 
+                return -EINVAL;
+            
+            int new_pgid = *(int*)argp;
+            if(new_pgid < 1) return -EINVAL;
+            tty->foreground_pgid = new_pgid;
+            return 0;
+        break;
     }
     return -EINVAL;
 }
 
 uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
-    tty_t* tty = current_tty;
+    tty_t* tty;
+    if(node->impl == TTY_CURRENT) tty = current_tty;
+    else tty = ttys[node->impl];
+
     for(int i = 0; i < size; i++){
         tty_putchar(tty,buffer[i]);
     }
@@ -341,7 +382,10 @@ uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buf
 }
 
 uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
-    tty_t* tty = current_tty;
+    tty_t* tty;
+    if(node->impl == TTY_CURRENT) tty = current_tty;
+    else tty = ttys[node->impl];
+    
     if(tty->mode == TTY_RAW){
         int bytes_read = 0;
         uint8_t c;
@@ -380,7 +424,7 @@ fs_node_t* create_stdin_device(){
     node->gid = 0;
     node->flags = FS_CHARDEVICE;
     node->inode = 0;
-    node->impl = 0;
+    node->impl = TTY_CURRENT;
     node->length = 0;
     node->ptr = 0;
     node->read = tty_read;
@@ -400,7 +444,7 @@ fs_node_t* create_stdout_device(){
     node->gid = 0;
     node->flags = FS_CHARDEVICE;
     node->inode = 0;
-    node->impl = 0;
+    node->impl = TTY_CURRENT;
     node->length = 0;
     node->ptr = 0;
     node->read = 0;
@@ -420,7 +464,7 @@ fs_node_t* create_stderr_device(){
     node->gid = 0;
     node->flags = FS_CHARDEVICE;
     node->inode = 0;
-    node->impl = 0;
+    node->impl = TTY_CURRENT;
     node->length = 0;
     node->ptr = 0;
     node->read = 0;
@@ -431,16 +475,21 @@ fs_node_t* create_stderr_device(){
     return node;
 }
 
-fs_node_t* create_tty_device(){
+fs_node_t* create_tty_device(int index){
     fs_node_t* node = malloc(sizeof(fs_node_t));
     memset(node,0, sizeof(fs_node_t));
-    strcpy(node->name,"tty0");
+    if(index == -1){
+        strcpy(node->name,"tty");
+        node->impl = TTY_CURRENT;
+    }else{
+        sprintf(node->name, "tty%d", index);
+        node->impl = index;
+    }
     node->mask = 0666;
     node->uid = 0;
     node->gid = 0;
     node->flags = FS_CHARDEVICE;
     node->inode = 0;
-    node->impl = 0;
     node->length = 0;
     node->ptr = 0;
     node->read = tty_read;
@@ -455,14 +504,16 @@ void tty_fs_init(){
     dev_add_node(create_stdin_device());
     dev_add_node(create_stdout_device());
     dev_add_node(create_stderr_device());
-    dev_add_node(create_tty_device());
+    dev_add_node(create_tty_device(-1));
+    for(int i = 0; i < TTY_COUNT; i++){
+        dev_add_node(create_tty_device(i));
+    }
 }
 
 void tty_init(){
-    num_ttys = 2;
-    ttys = calloc(2,sizeof(tty_t*));
+    ttys = calloc(TTY_COUNT,sizeof(tty_t*));
 
-    for(int i = 0; i < num_ttys; i++){
+    for(int i = 0; i < TTY_COUNT; i++){
         ttys[i] = calloc(sizeof(tty_t),1);    
         tty_t* tty = ttys[i];
         tty->width = framebuffer_width / font_width;
@@ -476,6 +527,7 @@ void tty_init(){
         tty->mode = TTY_CANONICAL;
         tty->cursor_visible = 1;
         tty->echo = 1;
+        tty->foreground_pgid = -1;
         initialise_wait_queue(&tty->line_wait_queue);
         initialise_wait_queue(&tty->ring_wait_queue);
         tty_clear_screen(tty);

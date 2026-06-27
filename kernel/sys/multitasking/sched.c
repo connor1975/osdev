@@ -73,12 +73,14 @@ void wait_queue_wake_one(struct wait_queue* q){
     }
 
     if(q->head == q->tail){
-        q->tail->task->state = TASK_READY;
+        if(q->tail->task->state != TASK_DEAD)
+            q->tail->task->state = TASK_READY;
         free(q->tail);
         q->head = NULL;
         q->tail = NULL;
     }else{
-        q->head->task->state = TASK_READY;
+        if(q->head->task->state != TASK_DEAD)
+            q->head->task->state = TASK_READY;
         struct wait_queue_entry* next = q->head->next;
         free(q->head);
         q->head = next;
@@ -92,7 +94,8 @@ void wait_queue_wake_all(struct wait_queue* q){
 
     struct wait_queue_entry* entry = q->head;
     while(entry != NULL){
-        entry->task->state = TASK_READY;
+        if(entry->task->state != TASK_DEAD)
+            entry->task->state = TASK_READY;
         entry = entry->next;
     }
     q->head = NULL;
@@ -101,7 +104,7 @@ void wait_queue_wake_all(struct wait_queue* q){
     irq_restore(flags);
 }
 
-void wait_queue_sleep(struct wait_queue* q){
+void wait_queue_sleep(struct wait_queue* q){    
     uint64_t flags = irq_disable_save();
     struct wait_queue_entry* entry = malloc(sizeof(struct wait_queue_entry));
     entry->next = NULL;

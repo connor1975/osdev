@@ -7,11 +7,11 @@
 fs_node_t *fs_root = 0;
 
 int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
-    if(node == NULL) return 0;
+    if(node == NULL) return -1;
     if(node->ioctl != 0)
         return node->ioctl(node,request,argp);
     else
-        return 0;
+        return -1;
 }
 
 uint32_t read_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffer){

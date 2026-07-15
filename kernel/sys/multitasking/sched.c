@@ -19,8 +19,72 @@ volatile task_t* current_task = NULL;
 
 int next_pid = 0;
 
+struct sleep_list_entry{
+    struct sleep_list_entry* prev;
+    task_t* task;
+    uint64_t sleep_target;
+    struct sleep_list_entry* next;
+};
+
+struct sleep_list_entry* sleep_list = NULL;
+
 int alloc_pid(){
     return next_pid++;
+}
+
+task_t* sleep_list_wake(struct sleep_list_entry* entry){
+    uint64_t flags = irq_disable_save();
+    entry->task->state = TASK_READY;
+    task_t* task = entry->task;
+    if(entry->prev != NULL && entry->next != NULL){
+        entry->next->prev = entry->prev;
+        entry->prev->next = entry->next;
+    }
+    if(entry->prev != NULL && entry->next == NULL){
+        entry->prev->next = NULL;
+    }
+    if(entry->prev == NULL && entry->next != NULL){
+        sleep_list = entry->next;
+        entry->next->prev = NULL;
+    }
+    if(entry->prev == NULL && entry->next == NULL){
+        sleep_list = NULL;
+    }
+    free(entry);
+    irq_restore(flags);
+    return task;
+}
+
+void sleep_list_append(task_t* task, uint64_t sleep_target){
+    uint64_t flags = irq_disable_save();
+    struct sleep_list_entry* entry = malloc(sizeof(struct sleep_list_entry));
+    entry->task = task;
+    entry->sleep_target = sleep_target;
+    entry->next = NULL;
+    if(sleep_list == NULL){
+        entry->prev = NULL;
+        sleep_list = entry;
+    }else{
+        struct sleep_list_entry* ptr = sleep_list;
+        while(ptr->next != NULL){
+            ptr = ptr->next;
+        }
+        ptr->next = entry;
+        entry->prev = ptr;
+    }
+    task->state = TASK_SLEEPING;
+    irq_restore(flags);
+}
+
+void wake_sleeping_tasks(){
+    struct sleep_list_entry* entry = sleep_list;
+    while(entry != NULL){
+        struct sleep_list_entry* next = entry->next;
+        if(entry->sleep_target <= ticks) {
+            sleep_list_wake(entry);
+        }
+        entry = next;
+    }
 }
 
 void get_next_ready_task(){
@@ -51,6 +115,7 @@ void schedule(struct interrupt_frame* regs){
 
 void timer_irq(struct interrupt_frame* regs){
     ticks++;
+    wake_sleeping_tasks();
     if(!(ticks % TASK_TIME_SLICE) || current_task->state != TASK_RUNNING){
         schedule(regs);
     }
@@ -129,8 +194,8 @@ void initialise_wait_queue(struct wait_queue* q){
 }
 
 void sleep(uint64_t ms){
-    uint64_t target = ticks + ms;
-    while(ticks < target);
+    sleep_list_append(current_task,ticks+ms);
+    yield();
 }
 
 void timer_init(){

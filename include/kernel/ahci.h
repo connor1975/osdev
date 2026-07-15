@@ -199,7 +199,7 @@ typedef struct ahci_device{
 
 void sata_read(int device_no, uint64_t lba, uint16_t sector_count, void* buffer);
 void sata_write(int device_no, uint64_t lba, uint16_t sector_count, void* buffer);
-void satapi_read(int device_no, uint32_t lba, uint16_t sector_count,void* buffer);
+void satapi_read(int device_no, uint64_t lba, uint16_t sector_count, void* buffer);
 void sata_identify(int device_no, void* buffer);
 void ahci_init(uint8_t bus, uint8_t dev, uint8_t func);
 ahci_device_t* ahci_get_device(int no);

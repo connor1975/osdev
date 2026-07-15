@@ -25,9 +25,10 @@ struct disk{
     int internal_no;
     int type;
     int block_size;
+    uint64_t lba_size;
 };
 
-int register_disk(int internal_no, int type, void* read, void* write, char* name);
+int register_disk(struct disk disk);
 void read_disk_lba(int disk, uint64_t lba, uint16_t sector_count, void* buffer);
 void write_disk_lba(int disk, uint64_t lba, uint16_t sector_count, void* buffer);
 void read_disk(int disk, uint32_t offset, uint32_t size, void* buffer);

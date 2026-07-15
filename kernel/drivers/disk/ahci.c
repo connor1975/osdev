@@ -17,15 +17,16 @@ ahci_device_t** ahci_devices = NULL;
 #define HBA_PxCMD_CR    0x8000
 
 void ata_string_convert(char* str){
-    for (int i = 0; i < 40 - 1; i += 2) {
+    for (int i = 0; i < 40; i += 2) {
         char temp = str[i];
         str[i] = str[i + 1];
         str[i + 1] = temp;
     }
 
-    for (int i = 0; i < 40 - 1; i++) {
-        if (str[i] == ' ' && str[i + 1] == ' ') {
-            str[i + 2] = '\0';
+    for (int i = 39; i >= 0; i--) {
+        if (str[i] == ' ' || str[i] == '\0') {
+            str[i] = '\0';
+        } else {
             break;
         }
     }
@@ -203,7 +204,7 @@ void sata_identify(int device_no, void* buffer){
     free_frame((void*)buffer_phys);
 }
 
-void satapi_read(int device_no, uint32_t lba, uint16_t sector_count,void* buffer){
+void satapi_read(int device_no, uint64_t lba, uint16_t sector_count, void* buffer){
     hba_port_t* port = ahci_devices[device_no]->port;
     uint64_t buffer_phys = (uint64_t)allocate_frames(((sector_count * 2048) + 4095) / 4096);
     
@@ -262,10 +263,22 @@ void ahci_enumerate_ports(hba_memory_t* abar){
                 device->type = AHCI_DEVICE_SATA;
                 ahci_devices[ahci_device_count] = device;
                 configure_port(port);
-                struct ata_identity indentify_info;
-                sata_identify(ahci_device_count, &indentify_info);
-                ata_string_convert((char*)indentify_info.model);
-                register_disk(ahci_device_count ,DISK_HARDDRIVE,sata_read,sata_write,(char*)indentify_info.model);
+                uint16_t* identify_info = malloc(BYTES_PER_SECTOR);
+                sata_identify(ahci_device_count, identify_info);
+                ata_string_convert((char*)&identify_info[ATA_IDENTITY_MODEL_WORD]);
+
+                uint64_t lba_size = *(uint64_t*)&identify_info[ATA_IDENTITY_MAX_LBA_EXT_WORD];
+                
+                struct disk disk;
+                disk.block_size = BYTES_PER_SECTOR;
+                disk.type = DISK_HARDDRIVE;
+                disk.internal_no = ahci_device_count;
+                disk.read = sata_read;
+                disk.write = sata_write;
+                disk.lba_size = lba_size;
+                strcpy(disk.disk_name,(char*)&identify_info[ATA_IDENTITY_MODEL_WORD]);
+                register_disk(disk);
+                
                 ahci_device_count++;
             }
             if(port->signature == SATA_SIG_ATAPI){
@@ -275,7 +288,17 @@ void ahci_enumerate_ports(hba_memory_t* abar){
                 device->type = AHCI_DEVICE_SATAPI;
                 ahci_devices[ahci_device_count] = device;
                 configure_port(port);
-                register_disk(ahci_device_count,DISK_OPTICAL,satapi_read,NULL, "AHCI Optical Disk");
+
+                struct disk disk;
+                disk.block_size = BYTES_PER_SECTOR_OPTICAL;
+                disk.type = DISK_OPTICAL;
+                disk.internal_no = ahci_device_count;
+                disk.read = satapi_read;
+                disk.write = NULL;
+                disk.lba_size = 0;
+                strcpy(disk.disk_name,"AHCI Optical Disk");
+                register_disk(disk);
+
                 ahci_device_count++;
             }
         }

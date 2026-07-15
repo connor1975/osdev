@@ -64,22 +64,13 @@ uint32_t write_disk_fs(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t*
     return size;
 }
 
-int register_disk(int internal_no, int type, void* read, void* write, char* name){
+int register_disk(struct disk disk){
     int index = disk_count;
     disk_count++;
 
     disks = realloc(disks,sizeof(struct disk) * disk_count);
-    disks[index].read = read;
-    disks[index].write = write;
-    disks[index].internal_no = internal_no;
-    disks[index].type = type;
 
-    if(disks[index].type == DISK_OPTICAL)
-        disks[index].block_size = BYTES_PER_SECTOR_OPTICAL;
-    else
-        disks[index].block_size = BYTES_PER_SECTOR;
-        
-    strcpy(disks[index].disk_name,name);
+    memcpy(&disks[index],&disk,sizeof(struct disk));
 
     return index;
 }

@@ -20,6 +20,13 @@
 
 #define PCI_SUBCLASS_NETWORK_ETHERNET   0x0
 
+#define PCI_BAR0 0x10
+#define PCI_BAR1 0x14
+#define PCI_BAR2 0x18
+#define PCI_BAR3 0x1C
+#define PCI_BAR4 0x20
+#define PCI_BAR5 0x24
+
 #include <stdint.h>
 
 int pci_find_device(uint16_t target_class, uint16_t target_subclass, uint8_t* bus, uint8_t* device, uint8_t* func);
@@ -29,5 +36,6 @@ void enumerate_pci();
 void init_pci_devices();
 uint32_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t function);
 uint32_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t function);
+uint8_t pci_get_progif(uint8_t bus, uint8_t device, uint8_t function);
 
 #endif

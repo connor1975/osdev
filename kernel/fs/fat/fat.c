@@ -34,7 +34,7 @@ void fat_volume_write_sectors(fat_mounted_volume_t* volume, int lba, int sector_
 }
 
 void fat_volume_write(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
-    write_disk(volume->disk_no,offset,size,buffer);
+    write_disk(volume->disk_no,offset + (volume->partition_offset * BYTES_PER_SECTOR),size,buffer);
 }
 
 uint32_t cluster_to_lba(fat_mounted_volume_t* volume, uint32_t cluster){

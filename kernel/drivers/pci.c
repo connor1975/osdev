@@ -1,7 +1,7 @@
 #include <common.h>
 #include <pci.h>
 #include <ahci.h>
-#include <ata.h>
+#include <ide.h>
 #include <rtl8169.h>
 #include <rtl8139.h>
 #include <stdint.h>
@@ -53,6 +53,11 @@ uint32_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t function){
     return reg;
 }
 
+uint8_t pci_get_progif(uint8_t bus, uint8_t device, uint8_t function){
+    uint32_t reg = pci_config_read(bus,device,function,0x8);
+    return (reg >> 8) & 0xff;
+}
+
 void enumerate_pci(){
     for(int b = 0; b < 256; b++){
         for(int d = 0; d < 32; d++){
@@ -83,8 +88,7 @@ void init_pci_devices(){
                     uint16_t class = (val2 >> 24);
 
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_AHCI) ahci_init(b,d,f);
-                    // soon implement a real ide driver to replace old buggy ata pio
-                    if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) panic("IDE is currently unsupported, please configure your virtual machine or bios to use AHCI");
+                    if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) ide_init(b,d,f);
                     if(class == PCI_CLASS_NETWORK_CONTROLLER && subclass == PCI_SUBCLASS_NETWORK_ETHERNET) {
                         // let the drivers themselves figure out which one they are
                         rtl8169_init(b,d,f);

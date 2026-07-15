@@ -1,8 +1,31 @@
 #ifndef ATA_H
 #define ATA_H
 
+#define ATA_SR_ERR 0x1
+#define ATA_SR_DRQ 0x8
+#define ATA_SR_SRV 0x10
+#define ATA_SR_DF 0x20
+#define ATA_SR_DRDY 0x40
+#define ATA_SR_BSY 0x80
+
+#define ATA_DATA_REG 0
+#define ATA_ERROR_REG 1
+#define ATA_FEATURES_REG 1
+#define ATA_SECCOUNT_REG 2
+#define ATA_LBA_LOW_REG 3
+#define ATA_LBA_MID_REG 4
+#define ATA_LBA_HIGH_REG 5
+#define ATA_DRIVE_REG 6
+#define ATA_STATUS_REG 7
+#define ATA_COMMAND_REG 7
+
+#define BM_IDE_COMMAND_REG 0
+#define BM_IDE_STATUS_REG 2
+
 #define READ_DMA_EXT 0x25
 #define WRITE_DMA_EXT 0x35
+#define READ_DMA 0xC8
+#define WRITE_DMA 0xCA
 #define READ_SECTORS_PIO 0x20
 #define WRITE_SECTORS_PIO 0x30
 #define READ_SECTORS_PIO_EXT 0x24
@@ -11,20 +34,20 @@
 #define IDENTIFY_PACKET_DEVICE 0xA1
 #define ATA_PACKET 0xA0
 #define ATAPI_READ 0xA8
+#define CACHE_FLUSH 0xE7
+#define CACHE_FLUSH_EXT 0xEA
 
 #include <stdint.h>
 
-struct ata_identity {
-        uint16_t ignore_a[27]; /* words 0-26 */
-        uint16_t model[20]; /* words 27-46 */
-        uint16_t ignore_b[13]; /* words 47-59 */
-        uint32_t lba_sectors; /* words 60-61 */
-        uint16_t ignore_c[21]; /* words 62-82 */
-        uint16_t supports_lba48; /* word 83 */
-        uint16_t ignore_d[16]; /* words 84-99 */
-        uint64_t lba48_sectors; /* words 100-103 */
-        uint16_t ignore_e[152]; /* words 104-255 */
-};
+#define ATA_IDENTITY_MODEL_WORD 27
+#define ATA_IDENTITY_COMMAND_SET_SUPPORT_1_WORD 82
+#define ATA_IDENTITY_COMMAND_SET_SUPPORT_2_WORD 83
+#define ATA_IDENTITY_COMMAND_SET_SUPPORT_3_WORD 84
+#define ATA_IDENTITY_CAPABILITIES_WORD 49
+#define ATA_IDENTITY_LBA48_SUPPORTED (1 << 10)
+#define ATA_IDENTITY_DMA_SUPPORTED (1 << 8)
+#define ATA_IDENTITY_MAX_LBA_EXT_WORD 100
+#define ATA_IDENTITY_MAX_LBA_WORD 60
 
 void ata_string_convert(char* str);
 

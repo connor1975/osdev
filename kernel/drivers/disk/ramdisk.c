@@ -19,6 +19,15 @@ int init_ramdisk(void* address){
     ramdisk_count++;
 
     ramdisks[index] = address;
-    int diskno = register_disk(index,DISK_RAMDISK,ramdisk_read,ramdisk_write, "RAMDISK" );
+    struct disk disk;
+    disk.internal_no = index;
+    disk.read = ramdisk_read;
+    disk.write = ramdisk_write;
+    disk.block_size = BYTES_PER_SECTOR;
+    disk.type = DISK_RAMDISK;
+    disk.lba_size = 0; 
+    strcpy(disk.disk_name,"RAMDISK");
+    int diskno = register_disk(disk);
+
     return diskno;
 }

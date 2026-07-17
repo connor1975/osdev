@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <interrupts.h>
 #include <stdio.h>
-#include <common.h>
+#include <debug.h>
 
 isr_t isr_handlers[256];
 

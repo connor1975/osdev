@@ -1,4 +1,3 @@
-#include <common.h>
 #include <mm.h>
 #include <multitasking.h>
 #include <fs/vfs.h>
@@ -23,6 +22,10 @@
 #include <string.h>
 #include <stddef.h>
 #include <elf.h>
+#include <screen.h>
+#include <heap.h>
+
+void syscall_install();
 
 int main(bootinfo_t* bootinfo){
     irq_disable();

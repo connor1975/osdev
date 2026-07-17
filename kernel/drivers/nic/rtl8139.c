@@ -4,7 +4,8 @@
 #include <pci.h>
 #include <interrupts.h>
 #include <mm.h>
-#include <common.h>
+#include <heap.h>
+#include <io.h>
 #include <stdio.h>
 #include <string.h>
 

@@ -89,6 +89,7 @@ int spawn_elf(fs_node_t* file,char** argv, char** envp);
 int task_close_file(task_t* task, int fd);
 extern void yield();
 char** gen_argv(char* string);
+void sleep(uint64_t ms);
 
 extern volatile task_t* current_task;
 extern volatile struct interrupt_frame* syscall_context;

@@ -1,4 +1,4 @@
-#include <common.h>
+#include <heap.h>
 #include <interrupts.h>
 #include <gdt.h>
 #include <mm.h>

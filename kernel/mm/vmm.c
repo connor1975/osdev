@@ -1,9 +1,9 @@
-#include <common.h>
 #include <mm.h>
 #include <interrupts.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <multitasking.h>
 
 uint64_t* current_pml4;
 

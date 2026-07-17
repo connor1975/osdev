@@ -1,9 +1,10 @@
 #include <interrupts.h>
-#include <common.h>
+#include <mm.h>
 #include <multitasking.h>
 #include <mm.h>
 #include <string.h>
 #include <stdint.h>
+#include <debug.h>
 
 uint64_t sys_brk(uint64_t addr){
     if(addr == 0) return (uint64_t)current_task->brk;

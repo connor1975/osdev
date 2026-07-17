@@ -2,7 +2,7 @@
 #include <bootloader.h>
 #include <string.h>
 #include <screen.h>
-#include <common.h>
+#include <mm.h>
 
 struct vbe_mode_info* framebuffer_info;
 void* framebuffer;

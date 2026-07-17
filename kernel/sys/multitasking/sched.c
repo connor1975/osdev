@@ -1,4 +1,4 @@
-#include <common.h>
+#include <heap.h>
 #include <interrupts.h>
 #include <gdt.h>
 #include <mm.h>
@@ -9,6 +9,8 @@
 #include <multitasking.h>
 #include <fs/vfs.h>
 #include <errno.h>
+#include <msr.h>
+#include <io.h>
 
 #define TASK_TIME_SLICE 30 // milliseconds
 
@@ -194,7 +196,7 @@ void initialise_wait_queue(struct wait_queue* q){
 }
 
 void sleep(uint64_t ms){
-    sleep_list_append(current_task,ticks+ms);
+    sleep_list_append((task_t*)current_task,ticks+ms);
     yield();
 }
 

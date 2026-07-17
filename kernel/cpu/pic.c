@@ -1,4 +1,4 @@
-#include <common.h>
+#include <io.h>
 
 void pic_send_eoi(int irq){
     if(irq > 7){

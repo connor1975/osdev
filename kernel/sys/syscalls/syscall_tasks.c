@@ -3,7 +3,7 @@
 #include <kernel/interrupts.h>
 #include <kernel/fs/vfs.h>
 #include <elf.h>
-#include <kernel/common.h>
+#include <kernel/heap.h>
 #include <kernel/gdt.h>
 #include <kernel/mm.h>
 #include <string.h>

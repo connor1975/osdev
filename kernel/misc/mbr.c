@@ -3,7 +3,7 @@
 #include <mbr.h>
 #include <disk.h>
 #include <mm.h>
-#include <common.h>
+#include <heap.h>
 
 int has_mbr_signature(void* bootsector){
     if(*(uint16_t*)(bootsector + 510) == 0xAA55){

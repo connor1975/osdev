@@ -1,6 +1,6 @@
 #include <fs/vfs.h>
 #include <keyboard.h>
-#include <common.h>
+#include <heap.h>
 #include <tty.h>
 #include <string.h>
 #include <stdint.h>

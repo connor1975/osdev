@@ -1,4 +1,4 @@
-#include <common.h>
+#include <heap.h>
 #include <mm.h>
 #include <pci.h>
 #include <net/networking.h>
@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <io.h>
+#include <interrupts.h>
 
 #define COMMAND_REG_OFF 0x37
 #define RX_CONFIG_REG_OFF 0x44

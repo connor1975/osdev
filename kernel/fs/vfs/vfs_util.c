@@ -1,4 +1,4 @@
-#include <common.h>
+#include <heap.h>
 #include <string.h>
 
 char* vfs_absolute_path(char* cwd, char* path) {

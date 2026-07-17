@@ -1,5 +1,5 @@
 #include <mm.h>
-#include <common.h>
+#include <heap.h>
 #include <multitasking.h>
 #include <gdt.h>
 #include <errno.h>

@@ -1,11 +1,12 @@
 #include <fs/vfs.h>
-#include <common.h>
+#include <heap.h>
 #include <fs/fat.h>
 #include <time.h>
 #include <disk.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <debug.h>
 
 // FAT32 FAT16 and FAT12 driver
 // write features currently fat32 exclusive

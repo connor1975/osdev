@@ -1,12 +1,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <pci.h>
-#include <common.h>
+#include <io.h>
+#include <heap.h>
 #include <ahci.h>
 #include <ata.h>
 #include <mm.h>
 #include <disk.h>
 #include <stddef.h>
+#include <debug.h>
 
 int ahci_device_count = 0;
 ahci_device_t** ahci_devices = NULL;

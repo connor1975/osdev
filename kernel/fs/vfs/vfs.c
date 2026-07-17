@@ -1,6 +1,6 @@
 #include <fs/vfs.h>
 #include <multitasking.h>
-#include <common.h>
+#include <heap.h>
 #include <stdio.h>
 #include <string.h>
 

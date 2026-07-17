@@ -3,7 +3,7 @@
 #include <disk.h>
 #include <fs/vfs.h>
 #include <fs/ext2.h>
-#include <common.h>
+#include <heap.h>
 #include <stdio.h>
 
 // currently experimental

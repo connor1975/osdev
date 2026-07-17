@@ -1,4 +1,3 @@
-#include <common.h>
 #include <disk.h>
 #include <stdint.h>
 #include <string.h>

@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <common.h>
+#include <mm.h>
 #include <acpi.h>
 
 void* rsdt;

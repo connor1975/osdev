@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <gdt.h>
-#include <common.h>
+#include <mm.h>
 
 struct gdt gdt;
 gdt_descriptor gdtr;

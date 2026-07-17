@@ -1,4 +1,3 @@
-#include <common.h>
 #include <interrupts.h>
 #include <msr.h>
 #include <stdio.h>

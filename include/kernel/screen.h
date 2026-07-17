@@ -2,6 +2,7 @@
 #define SCREEN_H
 
 #include <stdint.h>
+#include <bootloader.h>
 
 #define BLUE    0x000000FF
 #define GREEN   0x0000FF00

@@ -2,7 +2,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <pci.h>
-#include <common.h>
+#include <io.h>
+#include <heap.h>
+#include <mm.h>
 #include <disk.h>
 #include <string.h>
 

@@ -1,9 +1,10 @@
-#include <common.h>
+#include <heap.h>
 #include <fs/vfs.h>
 #include <spinlock.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <multitasking.h>
 
 struct pipe {
     uint64_t size;

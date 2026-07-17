@@ -4,7 +4,8 @@
 #include <mm.h>
 #include <string.h>
 #include <spinlock.h>
-#include <common.h>
+#include <heap.h>
+#include <debug.h>
 
 // Simple heap implementation
 // some room for optimization

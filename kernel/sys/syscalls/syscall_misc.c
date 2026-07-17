@@ -1,4 +1,3 @@
-#include <common.h>
 #include <interrupts.h>
 #include <multitasking.h>
 #include <pipe.h>
@@ -6,6 +5,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <errno.h>
+#include <string.h>
 
 extern volatile uint64_t ticks;
 

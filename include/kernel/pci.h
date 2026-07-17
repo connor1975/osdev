@@ -27,7 +27,16 @@
 #define PCI_BAR4 0x20
 #define PCI_BAR5 0x24
 
+#define PCI_BAR_UNKNOWN 0;
+#define PCI_BAR_IO 1
+#define PCI_BAR_MEMORY 2
+
 #include <stdint.h>
+
+typedef struct pci_bar{
+    uint64_t address;
+    int type;
+} pci_bar_t;
 
 int pci_find_device(uint16_t target_class, uint16_t target_subclass, uint8_t* bus, uint8_t* device, uint8_t* func);
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off);
@@ -37,5 +46,8 @@ void init_pci_devices();
 uint32_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t function);
 uint32_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t function);
 uint8_t pci_get_progif(uint8_t bus, uint8_t device, uint8_t function);
+void pci_enable_bus_mastering(uint8_t bus, uint8_t dev,uint8_t func);
+pci_bar_t pci_read_bar(uint8_t bus, uint8_t dev, uint8_t func,int bar_num);
+int pci_get_irq(uint8_t bus,uint8_t dev,uint8_t func);
 
 #endif

@@ -126,14 +126,13 @@ void rtl8169_init(uint8_t bus, uint8_t dev, uint8_t func){
     uint32_t vendor_id = pci_get_vendor_id(bus, dev, func);
     if(is_rtl8169(vendor_id,device_id)) return;
 
-    uint32_t bar0 = pci_config_read(bus,dev,func,0x10);
-    iobase = bar0 & 0xFFFFFFFC;
+    pci_bar_t bar0 = pci_read_bar(bus,dev,func,0);
+    iobase = bar0.address;
     for(int i = 0; i < 6;i++){
         rtl8169_mac_address[i] = inb(iobase + i);
     }
 
-    uint32_t reg = pci_config_read(bus,dev,func,0x3c);
-    int irq = reg & 0xff;
+    int irq = pci_get_irq(bus,dev,func);
     register_irq_handler(irq,rtl8169_irq_handler);
 
     outb(iobase + COMMAND_REG_OFF,0x10); // RESET bit

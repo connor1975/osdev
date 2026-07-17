@@ -88,12 +88,6 @@ int is_rtl8139(uint32_t vendor_id, uint32_t device_id){
     return 1;
 }
 
-void rtl8139_enable_bus_mastering(uint8_t bus, uint8_t dev,uint8_t func){
-    uint32_t reg = pci_config_read(bus,dev,func,0x4);
-    reg |= 0x4;
-    pci_config_write(bus,dev,func,0x4,reg);
-}
-
 uint8_t* rtl8139_get_mac(){
     return rtl8139_mac_address;
 }
@@ -101,17 +95,17 @@ uint8_t* rtl8139_get_mac(){
 void rtl8139_init(uint8_t bus, uint8_t dev, uint8_t func){
     if(is_rtl8139(pci_get_vendor_id(bus,dev,func),pci_get_device_id(bus,dev,func))) return;
 
-    uint32_t bar0 = pci_config_read(bus,dev,func,0x10);
-    iobase = bar0 & 0xFFFFFFFC;
+    pci_bar_t bar0 = pci_read_bar(bus,dev,func,0);
+    uint16_t iobase = bar0.address;
+    
     for(int i = 0; i < 6;i++){
         rtl8139_mac_address[i] = inb(iobase + i);
     }
 
-    uint32_t reg = pci_config_read(bus,dev,func,0x3c);
-    int irq = reg & 0xff;
+    int irq = pci_get_irq(bus,dev,func);
     register_irq_handler(irq,rtl8139_irq_handler);
 
-    rtl8139_enable_bus_mastering(bus,dev,func);
+    pci_enable_bus_mastering(bus,dev,func);
 
     outb(iobase + CONFIG1_REG_OFF, 0x0); // power on
 

@@ -403,29 +403,31 @@ void ide_write(int device_no, uint64_t lba, uint16_t sector_count, void* buffer)
 void ide_init(uint8_t bus, uint8_t dev, uint8_t func){
     uint8_t prog_if = pci_get_progif(bus,dev,func);
     
-    uint32_t cmd_status = pci_config_read(bus, dev, func, 0x04);
-    cmd_status |= (1 << 2);
-    pci_config_write(bus, dev, func, 0x04, cmd_status);
+    pci_enable_bus_mastering(bus,dev,func);
 
     if(prog_if & 1){
-        channels[0].cmd_base = pci_config_read(bus,dev,func,PCI_BAR0) & 0xfffffffc;
-        channels[0].ctrl_reg = (pci_config_read(bus,dev,func,PCI_BAR1) & 0xfffffffc) + 2;
+        pci_bar_t bar0 = pci_read_bar(bus,dev,func,0);
+        pci_bar_t bar1 = pci_read_bar(bus,dev,func,1);
+        channels[0].cmd_base = bar0.address;
+        channels[0].ctrl_reg = bar1.address + 2;
     }else{
         channels[0].cmd_base = 0x1f0;
         channels[0].ctrl_reg = 0x3f6;
     }
 
     if(prog_if & (1 << 2)){
-        channels[1].cmd_base = pci_config_read(bus,dev,func,PCI_BAR2) & 0xfffffffc;
-        channels[1].ctrl_reg = (pci_config_read(bus,dev,func,PCI_BAR3) & 0xfffffffc) + 2;
+        pci_bar_t bar2 = pci_read_bar(bus,dev,func,2);
+        pci_bar_t bar3 = pci_read_bar(bus,dev,func,3);
+        channels[1].cmd_base = bar2.address;
+        channels[1].ctrl_reg = bar3.address + 2;
     }else{
         channels[1].cmd_base = 0x170;
         channels[1].ctrl_reg = 0x376;
     }
 
-    uint32_t bm_ide = pci_config_read(bus,dev,func,PCI_BAR4) & 0xfffffffc;
-    channels[0].bm_ide = bm_ide;
-    channels[1].bm_ide = bm_ide + 8;
+    pci_bar_t bar4 = pci_read_bar(bus,dev,func,4);
+    channels[0].bm_ide = bar4.address;
+    channels[1].bm_ide = bar4.address + 8;
 
     uint16_t* identity = malloc(BYTES_PER_SECTOR);
     for (int i = 0; i < 2; i++) {

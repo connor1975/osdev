@@ -306,7 +306,8 @@ void ahci_enumerate_ports(hba_memory_t* abar){
 }
 
 void ahci_init(uint8_t bus, uint8_t dev, uint8_t func){
-    uint32_t bar5 = pci_config_read(bus,dev,func,0x24);
+    pci_bar_t bar = pci_read_bar(bus,dev,func,5);
+    uint32_t bar5 = bar.address;
     
     map_page_current(phys_to_virt((void*)(uint64_t)bar5),(void*)(uint64_t)bar5, PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_CACHEDISABLE); // Map the HBA Memory as uncacheable
     hba_memory_t* abar = phys_to_virt((void*)(uint64_t)bar5);

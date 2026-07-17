@@ -22,10 +22,20 @@ void pci_config_write(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off
 int pci_find_device(uint16_t target_class, uint16_t target_subclass, uint8_t* bus, uint8_t* device, uint8_t* func){
     for(int b = 0; b < 256; b++){
         for(int d = 0; d < 32; d++){
-            uint32_t val = pci_config_read(b,d,0,0);
+            uint32_t val = pci_config_read(b,d,0,0xC);
+            uint8_t header_type = (val >> 16) & 0xff;
+            int function_count;
+            if(header_type & (1 << 7))  // is device multifunction
+                function_count = 8;
+            else
+                function_count = 1;
+
+            val = pci_config_read(b,d,0,0);
             if(val != 0xffffffff){
-                for(int f = 0; f < 8; f++){
+                for(int f = 0; f < function_count; f++){
                     val = pci_config_read(b,d,f,0);
+                    if(val == 0xffffffff)
+                        continue;
                     uint32_t val2 = pci_config_read(b,d,f,0x8);
                     uint16_t subclass = (val2 >> 16) & 0xff;
                     uint16_t class = (val2 >> 24);
@@ -58,31 +68,61 @@ uint8_t pci_get_progif(uint8_t bus, uint8_t device, uint8_t function){
     return (reg >> 8) & 0xff;
 }
 
+void pci_enable_bus_mastering(uint8_t bus, uint8_t dev,uint8_t func){
+    uint32_t reg = pci_config_read(bus,dev,func,0x4);
+    reg |= 0x4;
+    pci_config_write(bus,dev,func,0x4,reg);
+}
+
+int pci_get_irq(uint8_t bus,uint8_t dev,uint8_t func){
+    uint32_t reg = pci_config_read(bus,dev,func,0x3c);
+    int irq = reg & 0xff;
+    return irq;
+}
+
+pci_bar_t pci_read_bar(uint8_t bus, uint8_t dev, uint8_t func,int bar_num){
+    pci_bar_t bar = {0};
+    int bar_offset = 0x10 + (0x4 * bar_num);
+    uint32_t value = pci_config_read(bus,dev,func,bar_offset);
+    if(value & 1){ // io address        
+        bar.address = value & 0xfffffffc;
+        bar.type = PCI_BAR_IO;
+    }else{ // memory space
+        bar.type = PCI_BAR_MEMORY;
+        
+        int mem_type = (value >> 1) & 0x3;
+        if(mem_type == 0){ // 32 bit
+            bar.address = value & 0xfffffff0;
+        }else if(mem_type == 2){ // 64 bit
+            uint32_t upper = pci_config_read(bus,dev,func,bar_offset + 0x4);
+            uint64_t address = ((uint64_t)value & 0xFFFFFFF0) | (((uint64_t)upper & 0xFFFFFFFF) << 32);
+            bar.address = address;
+        }else{
+            bar.type = PCI_BAR_UNKNOWN;
+        }
+    }
+    return bar;
+}
+
 void enumerate_pci(){
     for(int b = 0; b < 256; b++){
         for(int d = 0; d < 32; d++){
-            uint32_t val = pci_config_read(b,d,0,0);
-            if(val != 0xffffffff){
-                printf("Found PCI Device with vendor ID 0x%x\n",val & 0xffff);
-                for(int f = 0; f < 8; f++){
-                    val = pci_config_read(b,d,f,0);
-                    uint32_t val2 = pci_config_read(b,d,f,0x8);
-                    if(val != 0xffffffff){
-                        printf("    function %d - device id 0x%x class: 0x%x subclass: 0x%x\n",f,(val >> 16) & 0xffff, (val2 >> 24), (val2 >> 16) & 0xff);
-                    }
-                }
-            }
-        }
-    }
-}
 
-void init_pci_devices(){
-    for(int b = 0; b < 256; b++){
-        for(int d = 0; d < 32; d++){
-            uint32_t val = pci_config_read(b,d,0,0);
+            uint32_t val = pci_config_read(b,d,0,0xC);
+            uint8_t header_type = (val >> 16) & 0xff;
+            int function_count;
+            if(header_type & (1 << 7))  // is device multifunction
+                function_count = 8;
+            else
+                function_count = 1;
+
+            val = pci_config_read(b,d,0,0);
             if(val != 0xffffffff){
-                for(int f = 0; f < 8; f++){
+
+                for(int f = 0; f < function_count; f++){
                     val = pci_config_read(b,d,f,0);
+                    if(val == 0xffffffff)
+                        continue;
                     uint32_t val2 = pci_config_read(b,d,f,0x8);
                     uint16_t subclass = (val2 >> 16) & 0xff;
                     uint16_t class = (val2 >> 24);
@@ -98,4 +138,8 @@ void init_pci_devices(){
             }
         }
     }
+}
+
+void init_pci_devices(){
+    enumerate_pci();
 }

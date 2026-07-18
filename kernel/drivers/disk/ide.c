@@ -166,7 +166,7 @@ void ide_write_dma(struct ide_channel* channel, struct ide_drive* drive, uint64_
         outb(channel->cmd_base + ATA_LBA_MID_REG, (uint8_t)((lba >> 8) & 0xFF));
         outb(channel->cmd_base + ATA_LBA_HIGH_REG, (uint8_t)((lba >> 16) & 0xFF));
         ide_delay(channel);
-        outb(channel->cmd_base + ATA_COMMAND_REG, WRITE_DMA_EXT);
+        outb(channel->cmd_base + ATA_COMMAND_REG, WRITE_DMA);
     }
 
     outb(channel->bm_ide, 0x1);

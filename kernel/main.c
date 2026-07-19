@@ -24,6 +24,7 @@
 #include <elf.h>
 #include <screen.h>
 #include <heap.h>
+#include <debug.h>
 
 void syscall_install();
 
@@ -39,16 +40,16 @@ int main(bootinfo_t* bootinfo){
     paging_init();
     heap_init();
     tty_init();
-
     kbd_init();
+
+    multitasking_init();
+    irq_enable();
+
     init_pci_devices();
 
     int ramdisk = init_ramdisk(phys_to_virt(bootinfo->initrd));
     vfs_mount("/",ext2_mount_partition(ramdisk,0));
     devfs_init();
-    
-    multitasking_init();
-    irq_enable();
 
     syscall_install();
 

@@ -179,3 +179,11 @@ int sprintf(char *str, char *fmt, ...){
     mode = 0;
     return len;
 }
+
+int vsprintf (char* str, char* fmt, va_list valist ){
+    mode = 1;
+    target_buffer = str;
+    vprintf(fmt,valist);
+    mode = 0;
+    return len;
+}

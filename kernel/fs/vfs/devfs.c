@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <disk.h>
+#include <debug.h>
 
 fs_node_t* dev_node;
 
@@ -41,6 +42,7 @@ void dev_add_node(fs_node_t* node){
 }
 
 void tty_init();
+void task_open_stdio();
 
 void devfs_init(){
     dev_node = malloc(sizeof(fs_node_t));
@@ -75,4 +77,6 @@ void devfs_init(){
     zero_init();
     tty_fs_init();
     create_disk_devices();
+    task_open_stdio();
+    log_vfs_init();
 }

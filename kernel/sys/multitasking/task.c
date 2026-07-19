@@ -182,6 +182,12 @@ int kill(int pid, int sig){
     return 0;
 }
 
+void task_open_stdio(){
+    task_open_file(find_file("/dev/stdin"),(task_t*)current_task, O_RDONLY);
+    task_open_file(find_file("/dev/stdout"),(task_t*)current_task, O_WRONLY);
+    task_open_file(find_file("/dev/stderr"),(task_t*)current_task, O_WRONLY);
+}
+
 void multitasking_init(){
     uint64_t cr3;
     asm volatile ("movq %%cr3, %0" : "=r" (cr3));
@@ -207,9 +213,6 @@ void multitasking_init(){
     kernel_task.wait_handled = 0;
 
     memset(&kernel_task.open_files,0,sizeof(struct file_descriptor*) * MAX_OPEN_FILES);
-    task_open_file(find_file("/dev/stdin"),&kernel_task, O_RDONLY);
-    task_open_file(find_file("/dev/stdout"),&kernel_task, O_WRONLY);
-    task_open_file(find_file("/dev/stderr"),&kernel_task, O_WRONLY);
 
     timer_init();
 }

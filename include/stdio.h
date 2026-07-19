@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 
+int vsprintf (char* str, char* fmt, va_list valist );
 void vprintf(char* fmt, va_list valist);
 int sprintf(char *str, char *fmt, ...);
 void printf(char* fmt, ...);

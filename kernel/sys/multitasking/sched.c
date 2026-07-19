@@ -195,6 +195,10 @@ void initialise_wait_queue(struct wait_queue* q){
     q->tail = NULL;
 }
 
+uint64_t get_ticks_since_boot(){
+    return ticks;
+}
+
 void sleep(uint64_t ms){
     sleep_list_append((task_t*)current_task,ticks+ms);
     yield();

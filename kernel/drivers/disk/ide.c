@@ -25,6 +25,7 @@ struct ide_drive{
     uint64_t lba_size;
     int slave;
     char name[64];
+    int sata;
 };
 
 __attribute__((packed)) struct prdt_entry {
@@ -471,6 +472,13 @@ void ide_init(uint8_t bus, uint8_t dev, uint8_t func){
 
                 drive->supports_dma = identity[ATA_IDENTITY_CAPABILITIES_WORD] & ATA_IDENTITY_DMA_SUPPORTED;
 
+                if (identity[ATA_IDENTITY_SATA_CAPABILITIES_WORD] != 0x0000 && identity[ATA_IDENTITY_SATA_CAPABILITIES_WORD] != 0xFFFF){
+                    drive->sata = 1;
+                    drive->supports_dma = 0;
+                }else{
+                    drive->sata = 0;
+                }
+
                 drive->channel = channel;
                 drive->slave = j;
                 ide_drives[ide_drive_count] = drive;
@@ -487,6 +495,8 @@ void ide_init(uint8_t bus, uint8_t dev, uint8_t func){
                 strcpy(disk_info.disk_name,drive->name);
 
                 kprintf(KPRINTF_INFO,"ide: found ide hdd at %d:%d - %s - supports lba48?: %d - using dma?: %d - size in mb: %llu\n",i,j,drive->name, (drive->supports_lba48 != 0), (drive->supports_dma != 0), ((drive->lba_size * 512) / 1024) / 1024);
+                if(drive->sata)
+                    kprintf(KPRINTF_WARNING,"ide: drive is SATA, disabling dma to ensure compatibility\n");
 
                 register_disk(disk_info);
             }else if (result == 1) {

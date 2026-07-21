@@ -48,6 +48,7 @@
 #define ATA_IDENTITY_DMA_SUPPORTED (1 << 8)
 #define ATA_IDENTITY_MAX_LBA_EXT_WORD 100
 #define ATA_IDENTITY_MAX_LBA_WORD 60
+#define ATA_IDENTITY_SATA_CAPABILITIES_WORD 76
 
 void ata_string_convert(char* str);
 

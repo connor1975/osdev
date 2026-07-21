@@ -12,6 +12,7 @@
 #include <multitasking.h>
 #include <stdio.h>
 #include <sys/signal.h>
+#include <debug.h>
 
 tty_t* current_tty = NULL;
 tty_t** ttys = NULL;
@@ -534,4 +535,5 @@ void tty_init(){
     }
     current_tty = ttys[0];
     redraw_tty_screen(current_tty);
+    kprintf(KPRINTF_INFO, "tty system initialised - %dx%d console\n",current_tty->width,current_tty->height);
 }

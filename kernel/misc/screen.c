@@ -3,6 +3,7 @@
 #include <string.h>
 #include <screen.h>
 #include <mm.h>
+#include <debug.h>
 
 struct vbe_mode_info* framebuffer_info;
 void* framebuffer;
@@ -27,6 +28,8 @@ void screen_init(bootinfo_t* bootinfo){
     framebuffer_pitch = bootinfo->framebuffer->pitch;
     font_width = 8;
     font_height = 16;
+
+    kprintf(KPRINTF_INFO,"kernel given framebuffer at address %p with resolution of %dx%d\n",bootinfo->framebuffer->framebuffer,framebuffer_width,framebuffer_height);
 }
 
 void clear_char(uint32_t bg, int pos_x, int pos_y){

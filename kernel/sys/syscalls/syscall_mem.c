@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <debug.h>
+#include <errno.h>
 
 uint64_t sys_brk(uint64_t addr){
     if(addr == 0) return (uint64_t)current_task->brk;
@@ -22,7 +23,10 @@ uint64_t sys_brk(uint64_t addr){
 }
 
 uint64_t sys_mmap(void* addr, uint64_t length, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset){
-    if(fd != 0) panic("mmap not fully implemnted");
+    if(fd != 0) {
+        kprintf(KPRINTF_ERROR,"mmap not fully implemented\n");
+        return -ENOSYS;
+    }
     length = ((length + 4095) / 4096) * 4096;
     if(addr == NULL){
         addr = current_task->mmap_ptr;

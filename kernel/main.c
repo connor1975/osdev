@@ -41,7 +41,8 @@ int main(bootinfo_t* bootinfo){
     heap_init();
     tty_init();
     kbd_init();
-
+    kprintf(KPRINTF_INFO, "early initialisation finished\n");
+    
     multitasking_init();
     irq_enable();
 
@@ -53,6 +54,8 @@ int main(bootinfo_t* bootinfo){
 
     syscall_install();
 
+    verify_heap_integrity();
+    
     char** argv = gen_argv("/bin/sh");
     fs_node_t* file=kopen("/bin/sh");
     spawn_elf(file,argv,NULL);

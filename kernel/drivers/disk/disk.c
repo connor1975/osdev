@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <debug.h>
 
 struct disk* disks = NULL;
 int disk_count = 0;
@@ -71,6 +72,8 @@ int register_disk(struct disk disk){
     disks = realloc(disks,sizeof(struct disk) * disk_count);
 
     memcpy(&disks[index],&disk,sizeof(struct disk));
+
+    kprintf(KPRINTF_INFO,"disk manager registering disk %d of type %s\n",disk_count - 1, disk_type_strings[disk.type]);
 
     return index;
 }

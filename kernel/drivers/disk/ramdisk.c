@@ -1,6 +1,7 @@
 #include <disk.h>
 #include <stdint.h>
 #include <string.h>
+#include <debug.h>
 
 void* ramdisks[32];
 int ramdisk_count = 0;
@@ -26,6 +27,9 @@ int init_ramdisk(void* address){
     disk.type = DISK_RAMDISK;
     disk.lba_size = 0; 
     strcpy(disk.disk_name,"RAMDISK");
+    
+    kprintf(KPRINTF_INFO,"creating ramdisk from address %p\n",address);
+    
     int diskno = register_disk(disk);
 
     return diskno;

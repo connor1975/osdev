@@ -7,6 +7,7 @@
 #include <mm.h>
 #include <disk.h>
 #include <string.h>
+#include <debug.h>
 
 // todo - atapi
 
@@ -34,6 +35,7 @@ __attribute__((packed)) struct prdt_entry {
 };
 
 struct ide_channel {
+    int secondary;
     uint32_t cmd_base;
     uint32_t ctrl_reg;
     uint32_t bm_ide;
@@ -170,7 +172,10 @@ void ide_write_dma(struct ide_channel* channel, struct ide_drive* drive, uint64_
     }
 
     outb(channel->bm_ide, 0x1);
-    ide_poll(channel,1);
+    if(ide_poll(channel,1)){
+        kprintf(KPRINTF_ERROR,"ide: error writing %d sectors to lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,drive->slave);
+        return;
+    }
 
     while(!(inb(channel->bm_ide + BM_IDE_STATUS_REG) & 0x04));
     
@@ -222,7 +227,10 @@ void ide_read_dma(struct ide_channel* channel, struct ide_drive* drive, uint64_t
     }
 
     outb(channel->bm_ide, 0x8 | 0x1);
-    ide_poll(channel,1);
+    if(ide_poll(channel,1)){
+        kprintf(KPRINTF_ERROR,"ide: error reading %d sectors from lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,drive->slave);
+        return;
+    }
 
     while(!(inb(channel->bm_ide + BM_IDE_STATUS_REG) & 0x04));
     
@@ -281,6 +289,7 @@ void ide_read_pio48(struct ide_channel* channel, int slave, uint64_t lba, uint16
     uint16_t* bufferptr = buffer;
     for(int i = 0; i < sector_count; i++){
         if(ide_poll(channel, 1)){
+            kprintf(KPRINTF_ERROR,"ide: error reading %d sectors from lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,slave);
             return;
         }
         for(int j = 0; j < 256; j++){
@@ -305,6 +314,7 @@ void ide_read_pio28(struct ide_channel* channel, int slave, uint32_t lba, uint16
     uint16_t* bufferptr = buffer;
     for(int i = 0; i < sector_count; i++){
         if(ide_poll(channel, 1)){
+            kprintf(KPRINTF_ERROR,"ide: error reading %d sectors from lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,slave);
             return;
         }
         for(int j = 0; j < 256; j++){
@@ -329,6 +339,7 @@ void ide_write_pio28(struct ide_channel* channel, int slave, uint32_t lba, uint1
     uint16_t* bufferptr = buffer;
     for(int i = 0; i < sector_count; i++){
         if(ide_poll(channel, 1)){
+            kprintf(KPRINTF_ERROR,"ide: error writing %d sectors to lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,slave);
             return;
         }
         for(int x = 0; x < 256; x++){
@@ -360,6 +371,7 @@ void ide_write_pio48(struct ide_channel* channel, int slave, uint64_t lba, uint1
     uint16_t* bufferptr = buffer;
     for(int i = 0; i < sector_count; i++){
         if(ide_poll(channel, 1)){
+            kprintf(KPRINTF_ERROR,"ide: error writing %d sectors to lba %llu on ide disk %d:%d\n",sector_count,lba,channel->secondary,slave);
             return;
         }
         for(int x = 0; x < 256; x++){
@@ -430,10 +442,13 @@ void ide_init(uint8_t bus, uint8_t dev, uint8_t func){
     pci_bar_t bar4 = pci_read_bar(bus,dev,func,4);
     channels[0].bm_ide = bar4.address;
     channels[1].bm_ide = bar4.address + 8;
+    
+    kprintf(KPRINTF_INFO,"ide: initialising pci ide controller using ports %x %x, %x %x, %x\n",channels[0].cmd_base,channels[0].ctrl_reg,channels[1].cmd_base,channels[1].ctrl_reg,channels[0].bm_ide);
 
     uint16_t* identity = malloc(BYTES_PER_SECTOR);
     for (int i = 0; i < 2; i++) {
         struct ide_channel* channel = &channels[i];
+        channel->secondary = i;
 
         uint32_t prdt_phys = (uint32_t)(uint64_t)allocate_frame();
         channel->prdt_phys = prdt_phys;
@@ -470,6 +485,9 @@ void ide_init(uint8_t bus, uint8_t dev, uint8_t func){
                 disk_info.write = ide_write;
                 disk_info.lba_size = drive->lba_size;
                 strcpy(disk_info.disk_name,drive->name);
+
+                kprintf(KPRINTF_INFO,"ide: found ide hdd at %d:%d - %s - supports lba48?: %d - using dma?: %d - size in mb: %llu\n",i,j,drive->name, (drive->supports_lba48 != 0), (drive->supports_dma != 0), ((drive->lba_size * 512) / 1024) / 1024);
+
                 register_disk(disk_info);
             }else if (result == 1) {
                 // identify error - possibly atapi

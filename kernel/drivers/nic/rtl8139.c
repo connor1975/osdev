@@ -8,6 +8,10 @@
 #include <io.h>
 #include <stdio.h>
 #include <string.h>
+#include <debug.h>
+#include <multitasking.h>
+
+#define RESET_TIMEOUT 100
 
 #define COMMAND_REG_OFF 0x37
 #define CONFIG1_REG_OFF 0x52
@@ -75,6 +79,7 @@ void rtl8139_irq_handler(){
     uint16_t status = inw(iobase + ISR_REG_OFF);
     outw(iobase + ISR_REG_OFF, status);
     if(status & TRANSMIT_ERROR){
+        kprintf(KPRINTF_ERROR,"rtl8139: transmit error\n");
     }
     if(status & TRANSMIT_OK){
         tx_busy = 0;
@@ -110,8 +115,19 @@ void rtl8139_init(uint8_t bus, uint8_t dev, uint8_t func){
 
     outb(iobase + CONFIG1_REG_OFF, 0x0); // power on
 
+    kprintf(KPRINTF_INFO,"rtl8139: initialising nic - mac address %x:%x:%x:%x:%x:%x\n",
+        rtl8139_mac_address[0],rtl8139_mac_address[1],rtl8139_mac_address[2],
+        rtl8139_mac_address[3],rtl8139_mac_address[4],rtl8139_mac_address[5]);
+
     outb(iobase + COMMAND_REG_OFF,0x10); // RESET bit
-    while(inb(iobase + COMMAND_REG_OFF) & 0x10);
+
+    uint64_t start = get_ticks_since_boot();
+    while(inb(iobase + COMMAND_REG_OFF) & 0x10){
+        if(get_ticks_since_boot() > start + RESET_TIMEOUT){
+            kprintf(KPRINTF_ERROR,"rtl8139: failed to initialise, reset timed out\n");
+            return;
+        }
+    }
     
     rx_buffer_phys = (uint32_t)(uint64_t)allocate_frames(4); // practically guaranteed to return physical memory under 4gb with the size of our os
     rx_buffer = phys_to_virt((void*)(uint64_t)rx_buffer_phys);

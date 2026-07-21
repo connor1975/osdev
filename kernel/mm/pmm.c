@@ -32,14 +32,28 @@ int test_frame_bit(uint64_t frame_index){
 
 void pmm_init(bootinfo_t* bootinfo){
     uint64_t memory_size = 0;
+    kprintf(KPRINTF_INFO,"bios provided physical memory map:\n");
     for(int i = 0; i < bootinfo->mmap_entry_count; i++){
         struct e820_block* block = (bootinfo->mmap + (24 * i));
-        memory_size+=block->length;
+        kprintf(KPRINTF_INFO,"e820 block: %p-%p type %d\n",block->base, block->base + block->length, block->type);
+        if(block->type != E820_TYPE_RESERVED) memory_size+=block->length;
     }
+    kprintf(KPRINTF_INFO,"total physical memory detected: %dMB\n",((memory_size) / 1024) / 1024);
     bitmap = bootinfo->reserved_mem_end + DIRECT_MAP_OFFSET;
     frame_count = memory_size / 4096;
     uint64_t bitmap_size = frame_count / 8;
     memset((void*)bitmap,0,bitmap_size);   // mark all memory as free
+
+    for(int i = 0; i < bootinfo->mmap_entry_count; i++){
+        struct e820_block* block = (bootinfo->mmap + (24 * i));
+        if(block->type != E820_TYPE_FREE){
+            int frames = (block->length + (PAGE_SIZE - 1)) / 4096;
+            uint64_t index = block->base / PAGE_SIZE;
+            for(int j = 0; j < frames; j++){
+                set_frame_bit(index + j);
+            }
+        }    
+    }
 
     int usedframes = (((uint64_t)bootinfo->reserved_mem_end + bitmap_size) + 4095) / 4096;
     int i;

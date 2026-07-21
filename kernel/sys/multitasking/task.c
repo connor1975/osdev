@@ -9,6 +9,7 @@
 #include <multitasking.h>
 #include <fs/vfs.h>
 #include <errno.h>
+#include <debug.h>
 
 extern task_t* task_list;
 
@@ -215,4 +216,5 @@ void multitasking_init(){
     memset(&kernel_task.open_files,0,sizeof(struct file_descriptor*) * MAX_OPEN_FILES);
 
     timer_init();
+    kprintf(KPRINTF_INFO,"scheduler online\n");
 }

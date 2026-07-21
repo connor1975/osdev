@@ -3,6 +3,7 @@
 #include <heap.h>
 #include <stdio.h>
 #include <string.h>
+#include <debug.h>
 
 fs_node_t *fs_root = 0;
 
@@ -141,6 +142,8 @@ fs_node_t* kopen(char* path){
 
 int vfs_mount(char* path,fs_node_t* local_root){
     if(local_root == NULL) return 1;
+    kprintf(KPRINTF_INFO,"vfs: mounting volume \"%s\" to path \"%s\"\n",local_root->name,path);
+
     if(memcmp(path,"/",2) == 0){
         fs_root = local_root;
         return 0;
@@ -150,5 +153,6 @@ int vfs_mount(char* path,fs_node_t* local_root){
 
     mountpoint->flags |= FS_MOUNTPOINT;
     mountpoint->ptr = local_root;
+
     return 0;
 }

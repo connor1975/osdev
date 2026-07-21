@@ -125,7 +125,8 @@ void sata_read(int device_no, uint64_t lba, uint16_t sector_count, void* buffer)
     while(1){
         if(!(port->command_issue & 1)) break;   // Return once the command has finished
         if(port->int_status & (1 << 30)){   // Task File Error Status
-            panic("ahci error");
+            kprintf(KPRINTF_ERROR,"ahci: error reading %d sectors from lba %llu\n",sector_count,lba);
+            break;
         }
     } 
     memcpy(buffer,phys_to_virt((void*)buffer_phys),sector_count * 512);
@@ -166,7 +167,8 @@ void sata_write(int device_no, uint64_t lba, uint16_t sector_count, void* buffer
     while(1){
         if(!(port->command_issue & 1)) break;   // Return once the command has finished
         if(port->int_status & (1 << 30)){   // Task File Error Status
-            panic("ahci error");
+            kprintf(KPRINTF_ERROR,"ahci: error writing %d sectors to lba %llu\n",sector_count,lba);
+            break;
         }
     } 
     free_frames((void*)buffer_phys,(((sector_count * 512) + 4095) / 4096));
@@ -199,7 +201,7 @@ void sata_identify(int device_no, void* buffer){
     while(1){
         if(!(port->command_issue & 1)) break;
         if(port->int_status & (1 << 30)){   // Task File Error Status
-            panic("ahci error");
+            kprintf(KPRINTF_ERROR,"ahci: error during sata identify\n");
         }
     } 
     memcpy(buffer,phys_to_virt((void*)buffer_phys), 512);
@@ -247,8 +249,11 @@ void satapi_read(int device_no, uint64_t lba, uint16_t sector_count, void* buffe
     while(port->task_file_data & 0x80);    // Wait for BSY bit to be cleared
     port->command_issue = 1;
     while(1){
-        // TODO: Add error checking
         if(!(port->command_issue & 1)) break;
+        if(port->int_status & (1 << 30)){   // Task File Error Status
+            kprintf(KPRINTF_ERROR,"ahci: error reading from satapi drive\n");
+            break;
+        }
     } 
     memcpy(buffer,phys_to_virt((void*)buffer_phys),sector_count * 2048);
     free_frames((void*)buffer_phys,(((sector_count * 2048) + 4095) / 4096));
@@ -279,6 +284,9 @@ void ahci_enumerate_ports(hba_memory_t* abar){
                 disk.write = sata_write;
                 disk.lba_size = lba_size;
                 strcpy(disk.disk_name,(char*)&identify_info[ATA_IDENTITY_MODEL_WORD]);
+                
+                kprintf(KPRINTF_INFO,"ahci: found ahci hdd - %s - size in mb: %llu\n",disk.disk_name, ((disk.lba_size * 512) / 1024) / 1024);
+
                 register_disk(disk);
                 
                 ahci_device_count++;
@@ -299,8 +307,10 @@ void ahci_enumerate_ports(hba_memory_t* abar){
                 disk.write = NULL;
                 disk.lba_size = 0;
                 strcpy(disk.disk_name,"AHCI Optical Disk");
+                
+                kprintf(KPRINTF_INFO, "ahci: registering discovered atapi drive\n");
+                
                 register_disk(disk);
-
                 ahci_device_count++;
             }
         }
@@ -311,6 +321,8 @@ void ahci_init(uint8_t bus, uint8_t dev, uint8_t func){
     pci_bar_t bar = pci_read_bar(bus,dev,func,5);
     uint32_t bar5 = bar.address;
     
+    kprintf(KPRINTF_INFO,"ahci: initialising pci ahci controller - pci bar5: %p\n",(uint64_t)bar5);
+
     map_page_current(phys_to_virt((void*)(uint64_t)bar5),(void*)(uint64_t)bar5, PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_CACHEDISABLE); // Map the HBA Memory as uncacheable
     hba_memory_t* abar = phys_to_virt((void*)(uint64_t)bar5);
 

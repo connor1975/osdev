@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include <io.h>
 #include <interrupts.h>
+#include <debug.h>
+#include <multitasking.h>
+
+#define RESET_TIMEOUT 100
 
 #define COMMAND_REG_OFF 0x37
 #define RX_CONFIG_REG_OFF 0x44
@@ -137,8 +141,20 @@ void rtl8169_init(uint8_t bus, uint8_t dev, uint8_t func){
     int irq = pci_get_irq(bus,dev,func);
     register_irq_handler(irq,rtl8169_irq_handler);
 
+
+    kprintf(KPRINTF_INFO,"rtl8169: initialising nic - mac address %x:%x:%x:%x:%x:%x\n",
+        rtl8169_mac_address[0],rtl8169_mac_address[1],rtl8169_mac_address[2],
+        rtl8169_mac_address[3],rtl8169_mac_address[4],rtl8169_mac_address[5]);
+
     outb(iobase + COMMAND_REG_OFF,0x10); // RESET bit
-    while(inb(iobase + COMMAND_REG_OFF) & 0x10);
+
+    uint64_t start = get_ticks_since_boot();
+    while(inb(iobase + COMMAND_REG_OFF) & 0x10){
+        if(get_ticks_since_boot() > start + RESET_TIMEOUT){
+            kprintf(KPRINTF_ERROR,"rtl8169: failed to initialise, reset timed out\n");
+            return;
+        }
+    }
     setup_descriptors();
 
     outb(iobase + CR93C46_OFF,0xC0);

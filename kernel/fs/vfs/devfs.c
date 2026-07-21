@@ -47,6 +47,7 @@ void task_open_stdio();
 void devfs_init(){
     dev_node = malloc(sizeof(fs_node_t));
     memset(dev_node,0,sizeof(fs_node_t));
+    strcpy(dev_node->name,"devfs");
     dev_node->mask = dev_node->uid = dev_node->gid = dev_node->inode = dev_node->length = 0;
     dev_node->flags = FS_DIRECTORY;
     dev_node->read = 0;

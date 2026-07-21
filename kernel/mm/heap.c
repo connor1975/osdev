@@ -12,7 +12,7 @@
 
 atomic_flag heap_lock = ATOMIC_FLAG_INIT;
 
-#define HEAP_START_SIZE 4 * 1024 * 1024     // heap starts at 4 mb size but can grow
+#define HEAP_START_SIZE (4 * 1024 * 1024)     // heap starts at 4 mb size but can grow
 #define BLOCK_MAGIC 0xDEADBEEF
 
 struct heap_block{
@@ -80,6 +80,7 @@ void heap_expand(uint64_t size){
     last_block->next = new_block;
     last_block = new_block;
     combine_free_back(new_block);
+    kprintf(KPRINTF_INFO,"kernel heap growing by %llu bytes\n",size);
 }
 
 void* malloc_internal(uint64_t size){
@@ -168,4 +169,5 @@ void heap_init(){
     heap_start->size = HEAP_START_SIZE - sizeof(struct heap_block);
     heap_start->free = 1;
     last_block = heap_start;
+    kprintf(KPRINTF_INFO,"created dynamic kernel heap of starting size %llukb at address %p\n",HEAP_START_SIZE / 1024, KERNEL_HEAP_ADDR);
 }

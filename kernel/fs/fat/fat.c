@@ -590,5 +590,10 @@ fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
     }
     volume->cluster_size = volume->bootsector->bytes_per_sector * volume->bootsector->sectors_per_cluster;
     populate_directory(volume,vol_root,NULL,root_dir_start_cluster);
+    
+    kprintf(KPRINTF_INFO,"fat: mounting fat%d volume with name: %s\n",volume->fat_version,volume->volume_name);
+    kprintf(KPRINTF_INFO,"fat: cluster size %d cluster count %llu\n",volume->cluster_size,total_clusters);
+    kprintf(KPRINTF_INFO,"fat: on disk %d - partition offset %d\n",disk_no,partition_lba);
+    
     return vol_root;
 }

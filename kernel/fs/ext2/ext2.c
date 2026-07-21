@@ -5,6 +5,7 @@
 #include <fs/ext2.h>
 #include <heap.h>
 #include <stdio.h>
+#include <debug.h>
 
 // currently experimental
 
@@ -293,10 +294,12 @@ fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
     free(superblock);
 
     if(volume->superblock.magic != 0xef53){
-        printf("failed to mount: not a valid ext2 partition");
+        kprintf(KPRINTF_ERROR,"ext2: failed to mount volume on drive %d, lba offset %d - not a valid ext2 partition\n",disk_no,partition_lba);
         free(volume);
         return NULL;
     }
+
+    kprintf(KPRINTF_INFO, "ext2: mounting volume on drive %d, lba offset %d\n",disk_no,partition_lba);
 
     volume->block_size = 1024 << volume->superblock.log_block_size;
     volume->sectors_per_block = volume->block_size / BYTES_PER_SECTOR;

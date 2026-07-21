@@ -4,13 +4,14 @@
 #include <stdint.h>
 
 enum debug_level {
+    LOG_QUIET = 3,
     LOG_NORMAL = 4,
     LOG_DEBUG = 5,
     LOG_TRACE = 6
 };
 
 #define DEBUG_LEVEL LOG_NORMAL
-#define PRINT_LOGS 1
+#define PRINT_LOGS 0
 
 enum log_level{
     KPRINTF_FATAL,

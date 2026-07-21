@@ -6,6 +6,7 @@
 #include <rtl8139.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <debug.h>
 
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t func, uint8_t reg_off){
     uint32_t x = reg_off | (func << 8) | (device << 11) | (bus << 16) | (1 << 31);
@@ -105,6 +106,7 @@ pci_bar_t pci_read_bar(uint8_t bus, uint8_t dev, uint8_t func,int bar_num){
 }
 
 void enumerate_pci(){
+    kprintf(KPRINTF_INFO,"enumerating pci bus\n");
     for(int b = 0; b < 256; b++){
         for(int d = 0; d < 32; d++){
 
@@ -126,6 +128,11 @@ void enumerate_pci(){
                     uint32_t val2 = pci_config_read(b,d,f,0x8);
                     uint16_t subclass = (val2 >> 16) & 0xff;
                     uint16_t class = (val2 >> 24);
+
+                    uint16_t vendor = pci_get_vendor_id(b,d,f);
+                    uint16_t device = pci_get_device_id(b,d,f);
+
+                    kprintf(KPRINTF_INFO,"found pci device at %d:%d:%d - %x:%x\n",b,d,f, vendor,device);
 
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_AHCI) ahci_init(b,d,f);
                     if(class == PCI_CLASS_MASS_STORAGE && subclass == PCI_SUBCLASS_STORAGE_IDE) ide_init(b,d,f);

@@ -9,6 +9,9 @@
 
 // currently experimental
 
+#define EXT2_OLD_REV 0
+#define EXT_DYNAMIC_REV 1
+
 struct ext2_node_cache_entry {
     uint32_t inode;
     fs_node_t* node;
@@ -24,6 +27,7 @@ struct ext2_volume{
     uint32_t block_group_count;
     uint32_t sectors_per_block;
     uint32_t block_size;
+    int inode_size;
 
     block_group_descriptor_t* bgdt;
     struct ext2_node_cache_entry* node_cache;
@@ -128,15 +132,15 @@ ext2_inode_t* ext2_read_inode(struct ext2_volume* volume, int inode){
     block_group_descriptor_t* bgdt_entry = &volume->bgdt[block_group];
 
     ext2_inode_t* inode_table = malloc(volume->block_size);
-    uint32_t inode_byte_offset = inode_table_index * INODE_SIZE;
+    uint32_t inode_byte_offset = inode_table_index * volume->inode_size;
     int inode_table_block_index = inode_byte_offset / volume->block_size;
     ext2_volume_read_block(volume,bgdt_entry->inode_table + inode_table_block_index,inode_table);
     
-    uint32_t index_in_block = (inode_byte_offset % volume->block_size) / INODE_SIZE;
-    ext2_inode_t* file_inode = &inode_table[index_in_block];
+    uint32_t index_in_block = (inode_byte_offset % volume->block_size) / volume->inode_size;
+    ext2_inode_t* file_inode = (void*)inode_table + (index_in_block * volume->inode_size);
 
-    ext2_inode_t* ret_inode = malloc(INODE_SIZE);
-    memcpy(ret_inode,file_inode,INODE_SIZE);
+    ext2_inode_t* ret_inode = malloc(volume->inode_size);
+    memcpy(ret_inode,file_inode,volume->inode_size);
     
     free(inode_table);
     return ret_inode;
@@ -300,6 +304,13 @@ fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
     }
 
     kprintf(KPRINTF_INFO, "ext2: mounting volume on drive %d, lba offset %d\n",disk_no,partition_lba);
+
+    if(volume->superblock.rev_level == EXT2_OLD_REV)
+        volume->inode_size = EXT2_OLD_INODE_SIZE;
+    else
+        volume->inode_size = volume->superblock.inode_size;
+
+    kprintf(KPRINTF_INFO, "ext2: revision %d, inode size %d\n",volume->superblock.rev_level,volume->inode_size);
 
     volume->block_size = 1024 << volume->superblock.log_block_size;
     volume->sectors_per_block = volume->block_size / BYTES_PER_SECTOR;

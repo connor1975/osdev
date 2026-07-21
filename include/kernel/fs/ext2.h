@@ -7,7 +7,7 @@
 #define DOUBLY_INDIRECT_BLOCK_OFFSET 13
 #define TRIPLY_INDIRECT_BLOCK_OFFSET 14
 
-#define INODE_SIZE 128
+#define EXT2_OLD_INODE_SIZE 128
 
 typedef struct{
     uint32_t inodes_count;
@@ -27,6 +27,7 @@ typedef struct{
     uint16_t max_mnt_count;
     uint16_t magic;
     uint16_t state;
+    uint16_t errors;
     uint16_t minor_rev_level;
     uint32_t lastcheck;
     uint32_t checkinterval;

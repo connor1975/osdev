@@ -80,7 +80,7 @@ char to_lower(char string);
 char* to_fat_filename(char* filename);
 void to_normal_filename(char* fat_name, char* dest);
 
-fs_node_t* fat_mount_partition(int disk_no, int partition_lba);
+fs_node_t* fat_mount_partition(int disk_no, int partition);
 uint64_t fat_write(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer);
 
 struct fat_node_info{

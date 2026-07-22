@@ -91,7 +91,7 @@ typedef struct{
     char name[];
 } __attribute((packed)) ext2_dirent_t;
 
-fs_node_t* ext2_mount_partition(int disk_no, int partition_lba);
+fs_node_t* ext2_mount_partition(int disk_no, int partition);
 fs_node_t* ext2_finddir(fs_node_t *node, char *name);
 
 #endif

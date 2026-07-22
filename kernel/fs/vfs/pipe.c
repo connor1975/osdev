@@ -16,7 +16,7 @@ struct pipe {
     atomic_flag pipe_lock;
 };
 
-int pipe_read(fs_node_t* node, uint32_t offset, uint32_t size, void* buffer) {
+uint64_t pipe_read(fs_node_t* node, uint64_t offset, uint64_t size, void* buffer) {
     struct pipe* pipe = (void*)node->ptr;
     if(pipe == NULL || buffer == NULL) return -1;
     uint8_t* data = (uint8_t*)buffer;
@@ -34,7 +34,7 @@ int pipe_read(fs_node_t* node, uint32_t offset, uint32_t size, void* buffer) {
     return size;
 }
 
-int pipe_write(fs_node_t* node, uint32_t offset, uint32_t size, void* buffer) {
+uint64_t pipe_write(fs_node_t* node, uint64_t offset, uint64_t size, void* buffer) {
     struct pipe* pipe = (void*)node->ptr;
     if(pipe == NULL || buffer == NULL) return -1;
     const uint8_t* data = (uint8_t*)buffer;

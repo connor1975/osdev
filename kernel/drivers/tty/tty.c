@@ -371,7 +371,7 @@ int tty_ioctl(fs_node_t *node, unsigned long request, void * argp){
     return -EINVAL;
 }
 
-uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t tty_write(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     tty_t* tty;
     if(node->impl == TTY_CURRENT) tty = current_tty;
     else tty = ttys[node->impl];
@@ -382,7 +382,7 @@ uint32_t tty_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buf
     return size;
 }
 
-uint32_t tty_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t tty_read(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     tty_t* tty;
     if(node->impl == TTY_CURRENT) tty = current_tty;
     else tty = ttys[node->impl];

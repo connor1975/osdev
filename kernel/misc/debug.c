@@ -32,7 +32,7 @@ void write_log(char* str){
     }
 }
 
-uint32_t read_log(fs_node_t* node, uint32_t offset, uint32_t size, uint8_t* buffer){
+uint64_t read_log(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffer){
     if(size == 0) return 0;
     if(offset > write_index) return 0;
     if(offset + size >= write_index){

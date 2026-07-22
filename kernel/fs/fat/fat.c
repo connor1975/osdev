@@ -17,7 +17,7 @@
 void fat_truncate(fs_node_t* file, int length);
 
 void fat_volume_read_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
-    read_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    read_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
 void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
@@ -31,11 +31,11 @@ void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* b
 }
 
 void fat_volume_write_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
-    write_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    write_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
-void fat_volume_write(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
-    write_disk(volume->disk_no,offset + (volume->partition_offset * BYTES_PER_SECTOR),size,buffer);
+void fat_volume_write(fat_mounted_volume_t* volume, uint64_t offset, int size, void* buffer){
+    write_partition(volume->disk_no,volume->partition,offset,size,buffer);
 }
 
 uint32_t cluster_to_lba(fat_mounted_volume_t* volume, uint32_t cluster){
@@ -152,7 +152,7 @@ void fat_read_bootsector(fat_mounted_volume_t* volume){
     fat_volume_read_sectors(volume,0,1,volume->bootsector);
 }
 
-uint32_t fat_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t fat_read(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     if(node->length == 0) return 0;
     if(size == 0) return 0;
     if(offset >= node->length) return 0;
@@ -353,7 +353,7 @@ void fat_update_file_size(fat_mounted_volume_t* volume, fs_node_t* file, uint32_
     free(buffer);
 }
 
-uint32_t fat_write(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){ 
+uint64_t fat_write(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){ 
     fat_mounted_volume_t* volume = (fat_mounted_volume_t*)node->impl;
     struct fat_node_info* fatinfo = volume->fileinfo[node->inode];
     uint32_t current_cluster = fatinfo->starting_cluster;
@@ -530,12 +530,12 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
     free(dir);
 }
 
-fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
+fs_node_t* fat_mount_partition(int disk_no, int partition){
     memset(&dirent,0,sizeof(struct dirent));
     fat_mounted_volume_t* volume = calloc(sizeof(fat_mounted_volume_t),1);
     
     volume->disk_no = disk_no;
-    volume->partition_offset = partition_lba;
+    volume->partition = partition;
     fat_read_bootsector(volume);
     volume->next_inode = 1;
     volume->fat_index = -1;
@@ -593,7 +593,7 @@ fs_node_t* fat_mount_partition(int disk_no, int partition_lba){
     
     kprintf(KPRINTF_INFO,"fat: mounting fat%d volume with name: %s\n",volume->fat_version,volume->volume_name);
     kprintf(KPRINTF_INFO,"fat: cluster size %d cluster count %llu\n",volume->cluster_size,total_clusters);
-    kprintf(KPRINTF_INFO,"fat: on disk %d - partition offset %d\n",disk_no,partition_lba);
+    kprintf(KPRINTF_INFO,"fat: on disk %d - partition %d\n",disk_no,partition);
     
     return vol_root;
 }

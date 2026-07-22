@@ -13,27 +13,8 @@ int has_mbr_signature(void* bootsector){
     }
 }
 
-void mbr_enumerate_partitions(int disk){
-    void* bootsector = malloc(512);
-    read_disk_lba(disk,0,1,bootsector);
-    if(!has_mbr_signature(bootsector)){
-        free(bootsector);
-        printf("Disk %d has invalid mbr signature\n", disk);
-        return;
-    }
-
-    struct mbr_table_entry* partition_table = (bootsector + 0x1BE);
-    for(int i = 0; i < 4; i++){
-        if(partition_table[i].type != 0){
-            printf("found partition of size %dMB of type %x starting at %d\n",((partition_table[i].sector_count * 512) / 1024) / 1024,partition_table[i].type, partition_table[i].lba_start);
-        }
-    }
-    free(bootsector);
-}
-
-int get_partition_lba(int disk, int partition_no, uint32_t* lba){
-    *lba = 0;
-    void* bootsector = malloc(512);
+int mbr_get_partition_info(int disk, int partition_no, struct partition* partition_info){
+    void* bootsector = malloc(BYTES_PER_SECTOR);
     read_disk_lba(disk,0,1,bootsector);
     if(!has_mbr_signature(bootsector)){
         free(bootsector);
@@ -44,8 +25,9 @@ int get_partition_lba(int disk, int partition_no, uint32_t* lba){
     for(int i = 0; i < 4; i++){
         if(partition_table[i].type != 0){
             if(i == partition_no){
-                uint32_t partition_lba = partition_table[i].lba_start;
-                *lba = partition_lba;
+                partition_info->type = partition_table[i].type;
+                partition_info->lba = (uint64_t)partition_table[i].lba_start;
+                partition_info->sector_count = (uint64_t)partition_table[i].sector_count;
                 free(bootsector);
                 return 0;
             }

@@ -22,7 +22,7 @@ struct ext2_node_cache_entry {
 struct ext2_volume{
     fs_node_t* root_node;
     int disk_no;
-    uint32_t partition_offset;
+    uint32_t partition;
     ext2_superblock_t superblock;
     uint32_t block_group_count;
     uint32_t sectors_per_block;
@@ -59,19 +59,19 @@ void ext2_node_cache_append(struct ext2_volume* volume, fs_node_t* node, ext2_in
 }
 
 void ext2_volume_read_sectors(struct ext2_volume* volume, int lba, int sector_count, void* buffer){
-    read_disk_lba(volume->disk_no,lba + volume->partition_offset,sector_count,buffer);
+    read_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
 void ext2_volume_read(struct ext2_volume* volume, int offset, int size, void* buffer){
-    read_disk(volume->disk_no, offset,size,buffer);
+    read_partition(volume->disk_no,volume->partition ,offset,size,buffer);
 }
 
 void ext2_volume_read_block(struct ext2_volume* volume, int block, void* buffer){
-    read_disk_lba(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,volume->sectors_per_block,buffer);
+    read_partition_lba(volume->disk_no,volume->partition,(block * (volume->block_size / BYTES_PER_SECTOR)),volume->sectors_per_block,buffer);
 }
 
 void ext2_volume_read_blocks(struct ext2_volume* volume, int block, int count, void* buffer){
-    read_disk_lba(volume->disk_no,(block * (volume->block_size / BYTES_PER_SECTOR)) + volume->partition_offset,count * volume->sectors_per_block,buffer);
+    read_partition_lba(volume->disk_no,volume->partition,(block * (volume->block_size / BYTES_PER_SECTOR)),count * volume->sectors_per_block,buffer);
 }
 
 void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, int block_index, void* buffer){
@@ -119,8 +119,7 @@ void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, int 
 
 }
 
-ext2_inode_t* ext2_read_inode(struct ext2_volume* volume, int inode){    
-
+ext2_inode_t* ext2_read_inode(struct ext2_volume* volume, int inode){
     struct ext2_node_cache_entry* cache_entry = ext2_find_cached_node(volume,inode);
     if(cache_entry != NULL){
         return cache_entry->inode_data;
@@ -146,7 +145,7 @@ ext2_inode_t* ext2_read_inode(struct ext2_volume* volume, int inode){
     return ret_inode;
 }
 
-uint32_t ext2_read(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t ext2_read(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     struct ext2_volume* volume = (void*)node->impl;
 
     if(node->length == 0) return 0;
@@ -286,11 +285,11 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
     return NULL;
 }
 
-fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
+fs_node_t* ext2_mount_partition(int disk_no, int partition){
     struct ext2_volume* volume = malloc(sizeof(struct ext2_volume));
     memset(volume,0,sizeof(struct ext2_volume));
     volume->disk_no = disk_no;
-    volume->partition_offset = partition_lba;
+    volume->partition = partition;
     
     struct ext2_superblock* superblock = malloc(BYTES_PER_SECTOR * 2);
     ext2_volume_read_sectors(volume,2,2,superblock);
@@ -298,12 +297,12 @@ fs_node_t* ext2_mount_partition(int disk_no, int partition_lba){
     free(superblock);
 
     if(volume->superblock.magic != 0xef53){
-        kprintf(KPRINTF_ERROR,"ext2: failed to mount volume on drive %d, lba offset %d - not a valid ext2 partition\n",disk_no,partition_lba);
+        kprintf(KPRINTF_ERROR,"ext2: failed to mount volume on drive %d, partition %d - not a valid ext2 partition\n",disk_no,partition);
         free(volume);
         return NULL;
     }
 
-    kprintf(KPRINTF_INFO, "ext2: mounting volume on drive %d, lba offset %d\n",disk_no,partition_lba);
+    kprintf(KPRINTF_INFO, "ext2: mounting volume on drive %d, partition %d\n",disk_no,partition);
 
     if(volume->superblock.rev_level == EXT2_OLD_REV)
         volume->inode_size = EXT2_OLD_INODE_SIZE;

@@ -3,19 +3,19 @@
 #include <stdint.h>
 #include <string.h>
 
-uint32_t read_null(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t read_null(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     return 0;
 }
 
-uint32_t write_null(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t write_null(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     return size;
 }
 
-uint32_t write_zero(fs_node_t* node, uint32_t offsest, uint32_t size, uint8_t* buffer){
+uint64_t write_zero(fs_node_t* node, uint64_t offsest, uint64_t size, uint8_t* buffer){
     return size;
 }
 
-uint32_t read_zero(fs_node_t *node, uint32_t offset, uint32_t size, uint8_t *buffer){
+uint64_t read_zero(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer){
     memset(buffer,0,size);
     return size;
 }

@@ -9,7 +9,7 @@ static const uint32_t ansi_colours[16] = {
     0x00AA0000, // Red
     0x0000AA00, // Green
     0x00AA5500, // Yellow
-    0x000000AA, // Blue
+    0x000041DD, // Blue
     0x00AA00AA, // Magenta
     0x0000AAAA, // Cyan
     0x00AAAAAA, // White

@@ -27,6 +27,7 @@
 #include <debug.h>
 
 void syscall_install();
+void floppy_init();
 
 int main(bootinfo_t* bootinfo){
     irq_disable();
@@ -46,6 +47,7 @@ int main(bootinfo_t* bootinfo){
     multitasking_init();
     irq_enable();
 
+    floppy_init();
     init_pci_devices();
 
     int ramdisk = init_ramdisk(phys_to_virt(bootinfo->initrd));
@@ -55,7 +57,7 @@ int main(bootinfo_t* bootinfo){
     syscall_install();
 
     verify_heap_integrity();
-    
+
     char** argv = gen_argv("/bin/sh");
     fs_node_t* file=kopen("/bin/sh");
     spawn_elf(file,argv,NULL);

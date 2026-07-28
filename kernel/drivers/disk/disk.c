@@ -130,6 +130,7 @@ fs_node_t* generate_disk_device(int disk){
     static int optical_count = 0;
     static int hdd_count = 0;
     static int ramdisk_count = 0;
+    static int floppy_count = 0;
 
     struct disk* disk_info = &disks[disk];
     
@@ -139,6 +140,8 @@ fs_node_t* generate_disk_device(int disk){
         sprintf(node->name,"cdrom%d",optical_count++);        
     }else if(disk_info->type == DISK_RAMDISK){
         sprintf(node->name,"ramdisk%d",ramdisk_count++);
+    }else if(disk_info->type == DISK_FLOPPY){
+        sprintf(node->name,"floppy%d",floppy_count++);
     }else{
         sprintf(node->name,"disk%d",hdd_count++);
     }

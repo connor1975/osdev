@@ -199,7 +199,17 @@ uint64_t get_ticks_since_boot(){
     return ticks;
 }
 
+void sleep_spin(uint64_t ms){
+    uint64_t target = get_ticks_since_boot() + ms;
+    while(get_ticks_since_boot() < target);
+}
+
 void sleep(uint64_t ms){
+    if(current_task->id == 0){
+        sleep_spin(ms);
+        return;
+    }
+
     sleep_list_append((task_t*)current_task,ticks+ms);
     yield();
 }

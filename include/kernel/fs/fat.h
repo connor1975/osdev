@@ -90,9 +90,9 @@ struct fat_node_info{
     int no_child;
 };
 
-#define FAT_VERSION_32 32
-#define FAT_VERSION_16 16
-#define FAT_VERSION_12 12
+#define FAT_VERSION_32 (32)
+#define FAT_VERSION_16 (16)
+#define FAT_VERSION_12 (12)
 
 typedef struct fat_mounted_volume{
     fat_bs_t* bootsector;
@@ -109,6 +109,7 @@ typedef struct fat_mounted_volume{
 	char volume_name[12];
 } fat_mounted_volume_t;
 
+#define FAT_CHAIN_END 0xfffffff8
 #define FAT32_CHAIN_END 0xffffff8
 #define FAT16_CHAIN_END 0xfff8
 #define FAT12_CHAIN_END 0xff8

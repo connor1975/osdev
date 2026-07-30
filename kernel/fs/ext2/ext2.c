@@ -58,23 +58,23 @@ void ext2_node_cache_append(struct ext2_volume* volume, fs_node_t* node, ext2_in
     ptr->next = new_entry;
 }
 
-void ext2_volume_read_sectors(struct ext2_volume* volume, int lba, int sector_count, void* buffer){
+void ext2_volume_read_sectors(struct ext2_volume* volume, uint64_t lba, uint64_t sector_count, void* buffer){
     read_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
-void ext2_volume_read(struct ext2_volume* volume, int offset, int size, void* buffer){
+void ext2_volume_read(struct ext2_volume* volume, uint64_t offset, uint64_t size, void* buffer){
     read_partition(volume->disk_no,volume->partition ,offset,size,buffer);
 }
 
-void ext2_volume_read_block(struct ext2_volume* volume, int block, void* buffer){
+void ext2_volume_read_block(struct ext2_volume* volume, uint64_t block, void* buffer){
     read_partition_lba(volume->disk_no,volume->partition,(block * (volume->block_size / BYTES_PER_SECTOR)),volume->sectors_per_block,buffer);
 }
 
-void ext2_volume_read_blocks(struct ext2_volume* volume, int block, int count, void* buffer){
+void ext2_volume_read_blocks(struct ext2_volume* volume, uint64_t block, int count, void* buffer){
     read_partition_lba(volume->disk_no,volume->partition,(block * (volume->block_size / BYTES_PER_SECTOR)),count * volume->sectors_per_block,buffer);
 }
 
-void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, int block_index, void* buffer){
+void ext2_inode_read_block(struct ext2_volume* volume, ext2_inode_t* inode, uint64_t block_index, void* buffer){
     int pointers_per_block = volume->block_size / sizeof(uint32_t);
     if(block_index < 12){
         // direct block
@@ -283,6 +283,17 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
     }
     free(buffer);
     return NULL;
+}
+
+int ext2_probe(int disk, int partition){
+    ext2_superblock_t* superblock = malloc(BYTES_PER_SECTOR * 2);
+    read_partition_lba(disk,partition,2,2,superblock);
+    uint64_t magic = superblock->magic;
+    free(superblock);
+    
+    if(magic != 0xef53)
+        return 1;
+    return 0;
 }
 
 fs_node_t* ext2_mount_partition(int disk_no, int partition){

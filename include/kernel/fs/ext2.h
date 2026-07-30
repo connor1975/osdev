@@ -93,5 +93,6 @@ typedef struct{
 
 fs_node_t* ext2_mount_partition(int disk_no, int partition);
 fs_node_t* ext2_finddir(fs_node_t *node, char *name);
+int ext2_probe(int disk, int partition);
 
 #endif

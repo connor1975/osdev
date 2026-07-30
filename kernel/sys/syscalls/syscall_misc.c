@@ -6,6 +6,11 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
+#include <fs/fat.h>
+#include <fs/vfs.h>
+#include <fs/ext2.h>
+#include <disk.h>
+#include <debug.h>
 
 extern volatile uint64_t ticks;
 
@@ -23,6 +28,40 @@ uint64_t sys_gettimeofday(struct timeval* tv, void* tz){
     tv->tv_usec = (ticks * 1000) % 1000000;
     tv->tv_sec = get_unix_time();
     return 0;
+}
+
+uint64_t sys_mount(char* dev, char* path, char* fs){
+    if(dev == NULL || path == NULL || fs == NULL)
+        return -EINVAL;
+
+    fs_node_t* device = find_file(dev);
+    if(device == NULL)
+        return -ENODEV;
+
+    int disk = device->impl & 0xffffffff;
+
+    struct disk* disk_info = get_disk_info(disk);
+
+    int partition = 0;
+    if(disk_info->partition_count > 0){
+        partition = (uint32_t)((uint64_t)device->impl >> 32);
+    }
+
+    if((memcmp(fs, "ext2",5) == 0)){
+        fs_node_t* root = ext2_mount_partition(disk,partition);
+        if(root == NULL)
+            return -EINVAL;
+        vfs_mount(path,root);
+        return 0;
+    }
+    if(memcmp(fs,"fat",4) == 0){
+        fs_node_t* root = fat_mount_partition(disk,partition);
+        if(root == NULL)
+            return -EINVAL;
+        vfs_mount(path,root);
+        return 0;
+    }
+    return -EINVAL;
 }
 
 uint64_t sys_pipe(int* fildes){

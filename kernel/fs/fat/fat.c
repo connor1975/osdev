@@ -17,13 +17,13 @@
 
 void fat_truncate(fs_node_t* file, int length);
 
-void fat_volume_read_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
+void fat_volume_read_sectors(fat_mounted_volume_t* volume, uint64_t lba, uint64_t sector_count, void* buffer){
     read_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
-void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* buffer){
-    int lba_off = offset / volume->bootsector->bytes_per_sector;
-    int byte_off = offset % volume->bootsector->bytes_per_sector;
+void fat_volume_read(fat_mounted_volume_t* volume, uint64_t offset, uint64_t size, void* buffer){
+    uint64_t lba_off = offset / volume->bootsector->bytes_per_sector;
+    uint64_t byte_off = offset % volume->bootsector->bytes_per_sector;
     int sector_count = ((byte_off + size) + (volume->bootsector->bytes_per_sector - 1)) / volume->bootsector->bytes_per_sector;
     void* sector_buffer = malloc(volume->bootsector->bytes_per_sector * sector_count);
     fat_volume_read_sectors(volume,lba_off,sector_count,sector_buffer);
@@ -31,11 +31,11 @@ void fat_volume_read(fat_mounted_volume_t* volume, int offset, int size, void* b
     free(sector_buffer);
 }
 
-void fat_volume_write_sectors(fat_mounted_volume_t* volume, int lba, int sector_count, void* buffer){
+void fat_volume_write_sectors(fat_mounted_volume_t* volume, uint64_t lba, uint64_t sector_count, void* buffer){
     write_partition_lba(volume->disk_no,volume->partition,lba,sector_count,buffer);
 }
 
-void fat_volume_write(fat_mounted_volume_t* volume, uint64_t offset, int size, void* buffer){
+void fat_volume_write(fat_mounted_volume_t* volume, uint64_t offset, uint64_t size, void* buffer){
     write_partition(volume->disk_no,volume->partition,offset,size,buffer);
 }
 
@@ -733,7 +733,40 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
     free(dir);
 }
 
-fs_node_t* fat_mount_partition(int disk_no, int partition){
+int fat_probe(int disk, int partition){
+    fat_bs_t bs;
+    read_partition(disk,partition,0,sizeof(fat_bs_t),&bs);
+
+    if(bs.bytes_per_sector != BYTES_PER_SECTOR){
+        return 1;
+    }
+    if(bs.table_count != 1 && bs.table_count != 2){
+        return 1;
+    }
+    if(bs.reserved_sector_count == 0){
+        return 1;
+    }
+    if(bs.media_type != 0xF0 && bs.media_type < 0xF8){
+        return 1;
+    }
+    if(bs.sectors_per_cluster == 0){
+        return 1;
+    }
+    uint8_t spc = bs.sectors_per_cluster;
+    if ((spc & (spc - 1)) != 0){    // check if spc is a power of 2
+        return 1;
+    }
+    if (bs.total_sectors_16 == 0 && bs.total_sectors_32 == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
+fs_node_t* fat_mount_partition(int disk_no, int partition){    
+    if(fat_probe(disk_no,partition))
+        return NULL;
+    
     memset(&dirent,0,sizeof(struct dirent));
     fat_mounted_volume_t* volume = calloc(sizeof(fat_mounted_volume_t),1);
     
@@ -797,6 +830,6 @@ fs_node_t* fat_mount_partition(int disk_no, int partition){
     kprintf(KPRINTF_INFO,"fat: mounting fat%d volume with name: %s\n",volume->fat_version,volume->volume_name);
     kprintf(KPRINTF_INFO,"fat: cluster size %d cluster count %llu\n",volume->cluster_size,total_clusters);
     kprintf(KPRINTF_INFO,"fat: on disk %d - partition %d\n",disk_no,partition);
-    
+
     return vol_root;
 }

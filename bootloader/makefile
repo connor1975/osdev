@@ -1,28 +1,24 @@
-.PHONY: all
+.PHONY: all bios uefi
 
-all: $(BUILD_DIR)/bootloader stage1 stage2
+ifeq ($(wildcard /usr/lib/libgnuefi.a),)
+HAVE_GNUEFI := 0
+else
+HAVE_GNUEFI := 1
+endif
 
-$(BUILD_DIR)/bootloader:
-	mkdir -p $(BUILD_DIR)/bootloader
+all: bios uefi
 
-stage1: $(BUILD_DIR)/bootloader/mbr
+bios:
+	$(MAKE) -C bios
 
-$(BUILD_DIR)/bootloader/mbr: stage1/mbr.asm
-	nasm -f bin stage1/mbr.asm -o $(BUILD_DIR)/bootloader/mbr
+ifeq ($(HAVE_GNUEFI),1)
 
-stage2: $(BUILD_DIR)/bootloader/boot.bin
+uefi:
+	$(MAKE) -C uefi
 
-SRCS := $(shell find stage2 -name '*.c')
-NASMSRCS := $(shell find stage2 -name '*.asm')
+else
 
-OBJS := $(patsubst stage2/%.asm,$(BUILD_DIR)/bootloader/%.asm.o,$(NASMSRCS)) $(patsubst stage2/%.c,$(BUILD_DIR)/bootloader/%.c.o,$(SRCS))
+uefi:
+	@echo "GNU-EFI not found, skipping UEFI bootloader."
 
-$(BUILD_DIR)/bootloader/%.c.o: stage2/%.c
-	x86_64-elf-gcc -ffreestanding -mno-red-zone -z max-page-size=0x1000 -mcmodel=large -c $< -o $@ -I $(INCLUDE_DIR) -O2
-
-$(BUILD_DIR)/bootloader/%.asm.o: stage2/%.asm
-	nasm $< -o $@ -f elf64
-
-$(BUILD_DIR)/bootloader/boot.bin: $(OBJS)
-	x86_64-elf-gcc -ffreestanding -nostdlib -mno-red-zone -mcmodel=large -T stage2/linker.ld -o $(BUILD_DIR)/bootloader/boot.bin.elf $^ -lgcc -O2
-	objcopy -O binary $(BUILD_DIR)/bootloader/boot.bin.elf $(BUILD_DIR)/bootloader/boot.bin
+endif

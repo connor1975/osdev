@@ -16,6 +16,9 @@ bootimg:
 	sudo losetup -o 1048576 --sizelimit 503316480 $(LOOP_DEVICE) $(BUILD_DIR)/os.img
 	sudo mkfs.fat -F 32 $(BUILD_DIR)/os.img --offset 2048 -h 2048 -n "CONNOROS" -s 4
 	sudo mmd -i $(LOOP_DEVICE) ::/boot
+	sudo mmd -i $(LOOP_DEVICE) ::/EFI
+	sudo mmd -i $(LOOP_DEVICE) ::/EFI/BOOT
+	-sudo mcopy -i $(LOOP_DEVICE) $(BUILD_DIR)/uefi/bootx64.efi ::/EFI/BOOT
 	sudo mcopy -i $(LOOP_DEVICE) $(BUILD_DIR)/kernel/kernel.elf ::/boot
 	genext2fs -d sysroot bin/initrd -B 1024 -b 20000
 	sudo mcopy -i $(LOOP_DEVICE) bin/initrd ::/boot

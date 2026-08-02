@@ -1,0 +1,1 @@
+qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd bin/os.img -machine q35 -m 256M

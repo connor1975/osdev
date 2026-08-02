@@ -5,7 +5,7 @@
 #include <spinlock.h>
 #include <debug.h>
 
-unsigned char* bitmap;
+unsigned char* bitmap = NULL;
 uint64_t frame_count;
 uint64_t next_free_hint = 0;
 
@@ -30,7 +30,7 @@ int test_frame_bit(uint64_t frame_index){
 	return (bitmap[index] & (0x1 << offset ));
 }
 
-void pmm_init(bootinfo_t* bootinfo){
+void pmm_bios_init(bootinfo_t* bootinfo){
     uint64_t memory_size = 0;
     kprintf(KPRINTF_INFO,"bios provided physical memory map:\n");
     for(int i = 0; i < bootinfo->mmap_entry_count; i++){
@@ -61,6 +61,77 @@ void pmm_init(bootinfo_t* bootinfo){
         set_frame_bit(i);
     }
     next_free_hint = i;
+}
+
+void pmm_uefi_init(bootinfo_t* bootinfo){
+    kprintf(KPRINTF_INFO,"using uefi firmware provided memory map\n");
+    EFI_MEMORY_DESCRIPTOR* MemoryMap = bootinfo->efi_memory_map.MemoryMap;
+    uint64_t descriptor_size = bootinfo->efi_memory_map.DescriptorSize;
+    uint64_t memory_map_size = bootinfo->efi_memory_map.MemoryMapSize;
+    uint64_t total_memory_size = 0;
+
+    uint64_t offset = 0;
+    while(offset < memory_map_size){
+        EFI_MEMORY_DESCRIPTOR* descriptor = (EFI_MEMORY_DESCRIPTOR*)((uint64_t)MemoryMap + offset);
+        if(descriptor->Type != EfiMemoryMappedIO && descriptor->Type != EfiMemoryMappedIOPortSpace && descriptor->Type != EfiPalCode && descriptor->Type != EfiPersistentMemory && descriptor->Type != EfiUnusableMemory && descriptor->Type != EfiReservedMemoryType){ 
+            total_memory_size += descriptor->NumberOfPages * PAGE_SIZE;
+        }
+        kprintf(KPRINTF_INFO,"efi-memmap entry - base: %p length: %lluKB type: %d\n",descriptor->PhysicalStart,(descriptor->NumberOfPages * PAGE_SIZE) / 1024,descriptor->Type);
+        offset+=descriptor_size;
+    }
+
+    kprintf(KPRINTF_INFO,"total physical memory detected: %dMB\n",((total_memory_size) / 1024) / 1024);
+
+    frame_count = total_memory_size / PAGE_SIZE;
+
+    uint64_t bitmap_size = (total_memory_size / PAGE_SIZE) / 8;
+    uint64_t bitmap_phys = 0;
+
+    MemoryMap = bootinfo->efi_memory_map.MemoryMap;
+    offset = 0;
+    while(offset < memory_map_size){
+        EFI_MEMORY_DESCRIPTOR* descriptor = (EFI_MEMORY_DESCRIPTOR*)((uint64_t)MemoryMap + offset);
+        if(descriptor->Type == EfiConventionalMemory && (descriptor->NumberOfPages * PAGE_SIZE) > bitmap_size){
+            if(descriptor->PhysicalStart == NULL)
+                continue;
+            bitmap = descriptor->PhysicalStart + DIRECT_MAP_OFFSET;
+            bitmap_phys = (uint64_t)descriptor->PhysicalStart; 
+            break;
+        }
+        offset+=descriptor_size;
+    }
+    if(bitmap_phys == 0)
+        panic("Failed to initialise page frame allocator bitmap\n");
+
+    memset(bitmap,0xff,bitmap_size);
+    MemoryMap = bootinfo->efi_memory_map.MemoryMap;
+    offset = 0;
+    while(offset < memory_map_size){
+        EFI_MEMORY_DESCRIPTOR* descriptor = (EFI_MEMORY_DESCRIPTOR*)((uint64_t)MemoryMap + offset);
+        if(descriptor->Type == EfiConventionalMemory){
+            uint64_t start_index = (uint64_t)descriptor->PhysicalStart / PAGE_SIZE;
+            for(int i = 0; i < descriptor->NumberOfPages; i++){
+                clear_frame_bit(start_index + i);
+            }
+        }
+        offset+=descriptor_size;
+    }
+
+    uint64_t bitmap_index = (uint64_t)bitmap_phys / PAGE_SIZE;
+    uint64_t bitmap_page_size = (bitmap_size + (PAGE_SIZE - 1)) / PAGE_SIZE;
+    for(int i = 0; i < bitmap_page_size; i++){
+        set_frame_bit(bitmap_index + i);
+    }
+}
+
+void pmm_init(bootinfo_t* bootinfo){
+    if(bootinfo->boot_type == BOOT_UEFI){
+        return pmm_uefi_init(bootinfo);
+    }
+    if(bootinfo->boot_type == BOOT_BIOS){
+        return pmm_bios_init(bootinfo);
+    }
+    panic("This bootloader is unsupported");
 }
 
 atomic_flag pmm_lock = ATOMIC_FLAG_INIT;

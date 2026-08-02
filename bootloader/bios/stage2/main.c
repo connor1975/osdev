@@ -86,7 +86,7 @@ void kmain(uint8_t drive_num){
     void* memory_map = get_memory_map(&mmap_entry_count);
 
     //printf("setting graphics mode");
-    struct vbe_mode_info* modeinfo = vbe_init(1024,768,32);
+    struct framebuffer* modeinfo = vbe_init(1024,768,32);
 
     bootinfo_t* bootinfo = (malloc(sizeof(bootinfo_t)) + DIRECT_MAP_OFFSET);
     bootinfo->initrd = initrd;
@@ -96,6 +96,7 @@ void kmain(uint8_t drive_num){
     bootinfo->framebuffer = modeinfo;
     bootinfo->reserved_mem_start = kernelend;
     bootinfo->reserved_mem_end = malloc_ptr;
+    bootinfo->boot_type = BOOT_BIOS;
 
     printf("%d",entry(bootinfo));
 

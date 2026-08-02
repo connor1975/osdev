@@ -11,7 +11,7 @@ extern void set_vbe_mode(uint16_t mode);
 
 struct vbe_mode_info modeinfo;
 
-struct vbe_mode_info* vbe_init(int target_width, int target_height, int target_bpp){
+struct framebuffer* vbe_init(int target_width, int target_height, int target_bpp){
     struct vbe_info_structure* vbeinfo = get_vbe_info();
 	if(memcmp(vbeinfo->signature,"VESA",4)){
 		printf("VBE not supported!");
@@ -28,7 +28,11 @@ struct vbe_mode_info* vbe_init(int target_width, int target_height, int target_b
 		modelist++;
 	}
 	set_vbe_mode(target_mode);
-	void* framebufferinfo = malloc(sizeof(struct vbe_mode_info));
-    memcpy(framebufferinfo,&modeinfo,sizeof(struct vbe_mode_info));
-    return framebufferinfo;
+	struct framebuffer* framebufferinfo = malloc(sizeof(struct framebuffer));
+    framebufferinfo->framebuffer = (void*)(uint64_t)modeinfo.framebuffer;
+	framebufferinfo->width = modeinfo.width;
+	framebufferinfo->height = modeinfo.height;
+	framebufferinfo->pitch = modeinfo.pitch;
+	framebufferinfo->bpp = modeinfo.bpp;
+	return framebufferinfo;
 }

@@ -2,6 +2,7 @@
 #define COMMON_H
 
 #include <stdint.h>
+#include <bootloader.h>
 
 #define BOOTLOADER
 
@@ -12,7 +13,7 @@ void* malloc(uint64_t size);
 void free(uint64_t size);
 
 #include <vbe.h>
-struct vbe_mode_info* vbe_init(int target_width, int target_height, int target_bpp);
+struct framebuffer* vbe_init(int target_width, int target_height, int target_bpp);
 
 void fat_init(uint32_t partition_lba, uint8_t drive_num);
 void read_sectors(uint32_t lba, uint16_t sector_count, void* buffer,uint8_t drive_num);

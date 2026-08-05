@@ -6,6 +6,16 @@
 #include <tty.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <debug.h>
+
+#define PS2_TIMEOUT 100000
+#define PS2_DATA 0x60
+#define PS2_STATUS 0x64
+
+#define ACK 0xFA
+#define RESEND 0xFE
+#define DATA_OUT_READY 0x1
+#define SET_TYPEMATIC_RATE 0xF3
 
 const char scanmap[128] = {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0x7f, '\t',
@@ -87,6 +97,24 @@ void keyboard_irq_handler(struct interrupt_frame* frame){
     }
 }
 
+int keyboard_wait_data(){
+    for(int i = 0; i < PS2_TIMEOUT; i++){
+        if(inb(PS2_STATUS) & DATA_OUT_READY){
+            return inb(PS2_DATA);
+        }
+    }
+    return -1;
+}
+
+void keyboard_send_byte(uint8_t byte){
+    outb(PS2_DATA,byte);
+    uint8_t result = keyboard_wait_data();
+    if(result != ACK)
+        kprintf(KPRINTF_ERROR,"ps2: sending byte %x failed\n",byte);        
+}
+
 void kbd_init(){
+    keyboard_send_byte(SET_TYPEMATIC_RATE);
+    keyboard_send_byte(0x20);
     register_irq_handler(1,keyboard_irq_handler);
 }

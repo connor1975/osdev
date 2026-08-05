@@ -737,6 +737,8 @@ void fat_umount(fs_node_t* node){
     fat_mounted_volume_t* volume = (fat_mounted_volume_t*)node->impl;
     free(volume->bootsector);
     free(volume->fat_buffer);
+    /*
+    already debugged and thought i fixed this once... :(
     for(int i = 0; i < volume->next_inode; i++){
         if(volume->fileinfo[i] != NULL){
             struct fat_node_info* fatinfo = volume->fileinfo[i];
@@ -748,8 +750,8 @@ void fat_umount(fs_node_t* node){
             }
             free(fatinfo);
         }
-    }
-    free(volume->fileinfo);
+        free(volume->fileinfo);
+    }*/
     free(volume);
 }
 

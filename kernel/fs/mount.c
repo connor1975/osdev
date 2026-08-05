@@ -8,6 +8,7 @@
 #include <heap.h>
 #include <debug.h>
 #include <stdio.h>
+#include <multitasking.h>
 
 struct mount{
     fs_node_t* node;
@@ -72,7 +73,8 @@ void hook_mtab(){
     rebuild_mounts_vfs();
 }
 
-void register_mount(fs_node_t* node, char* device, char* path, char* fs){
+void register_mount(fs_node_t* node, char* device, char* local_path, char* fs){
+    char* path = vfs_absolute_path(current_task->cwd,local_path);
     struct mount* current = mounts;
     if(current == NULL){
         mounts = malloc(sizeof(struct mount));
@@ -102,9 +104,11 @@ void register_mount(fs_node_t* node, char* device, char* path, char* fs){
 
     kprintf(KPRINTF_INFO,"mount: mounting %s to path: %s of type %s\n",current->device,current->path,current->fs);
     rebuild_mounts_vfs();
+    free(path);
 }
 
-void mount_vfs_remove_single(char* path){
+void mount_vfs_remove_single(char* local_path){
+    char* path = vfs_absolute_path(current_task->cwd,local_path);
     struct mount* current = mounts;
     struct mount* prev = NULL;
     while(current != NULL){
@@ -123,24 +127,11 @@ void mount_vfs_remove_single(char* path){
     }
 }
 
-void unmount_device(char* device){
-    struct mount* current = mounts;
-    while(current != NULL){
-        struct mount* next = current->next;
-
-        if(strcmp(current->device,device)==0)
-            umount(current->path);
-        current = next;
-    }
-}
-
 int umount(char* target){
     fs_node_t* node = find_file(target);
-    if(node->flags & FS_BLOCKDEVICE){
-        unmount_device(target);
-        return 0;
-    }
-    
+    if(node == NULL)
+        return -ENOENT;
+        
     vfs_unmount(target);
     mount_vfs_remove_single(target);
 

@@ -7,6 +7,12 @@
 
 fs_node_t *fs_root = 0;
 
+fs_node_t* resolve_node(fs_node_t* node){
+    if(node == NULL) return NULL;
+    if(node->flags & FS_MOUNTPOINT) node = node->ptr;
+    return node;
+}
+
 int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
     if(node == NULL) return -1;
     if(node->ioctl != 0)
@@ -33,24 +39,27 @@ uint64_t write_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buff
 
 void open_fs(fs_node_t *node, uint8_t read, uint8_t write){
     if(node == NULL) return;
+    node = resolve_node(node);
     if (node->open != 0)
         return node->open(node);
 }
 
 void close_fs(fs_node_t *node){
     if(node == NULL) return;
+    node = resolve_node(node);
     if (node->close != 0)
         return node->close(node);
 }
 
 void truncate_fs(fs_node_t* node, int length){
     if(node == NULL) return;
+    node = resolve_node(node);
     if(node->truncate != 0)
         node->truncate(node,length);
 }
 
 struct dirent *readdir_fs(fs_node_t *node, uint32_t index){
-    if(node->flags & FS_MOUNTPOINT) node = node->ptr;
+    node = resolve_node(node);
     if (node->flags == FS_DIRECTORY && node->readdir != 0 )
         return node->readdir(node, index);
     else
@@ -58,7 +67,7 @@ struct dirent *readdir_fs(fs_node_t *node, uint32_t index){
 }
 
 fs_node_t *finddir_fs(fs_node_t *node, char *name){
-    if(node->flags & FS_MOUNTPOINT) node = node->ptr;
+    node = resolve_node(node);
     if (node->flags & FS_DIRECTORY && node->finddir != 0 )
         return node->finddir(node, name);
     else
@@ -66,9 +75,17 @@ fs_node_t *finddir_fs(fs_node_t *node, char *name){
 }
 
 void create_file_fs(fs_node_t* node, char* name){
-    if(node->flags & FS_MOUNTPOINT) node = node->ptr;
+    node = resolve_node(node);
     if (node->flags & FS_DIRECTORY && node->create_file != 0)
         return node->create_file(node,name);
+}
+
+void umount_fs(fs_node_t *node){
+    if(node->flags & FS_MOUNTPOINT) {
+        node = node->ptr;
+        if(node->umount != 0 )
+            return node->umount(node);
+    }
 }
 
 fs_node_t* find_file(char* file_path){
@@ -142,17 +159,29 @@ fs_node_t* kopen(char* path){
 
 int vfs_mount(char* path,fs_node_t* local_root){
     if(local_root == NULL) return 1;
-    kprintf(KPRINTF_INFO,"vfs: mounting volume \"%s\" to path \"%s\"\n",local_root->name,path);
 
     if(memcmp(path,"/",2) == 0){
         fs_root = local_root;
+        hook_mtab();
+        remount_devfs();
         return 0;
     }
-    fs_node_t* mountpoint = kopen(path);
+    fs_node_t* mountpoint = find_file(path);
     if(mountpoint == NULL) return 1;
 
     mountpoint->flags |= FS_MOUNTPOINT;
     mountpoint->ptr = local_root;
+
+    return 0;
+}
+
+int vfs_unmount(char* path){
+    fs_node_t* mountpoint = find_file(path);
+    if(mountpoint == NULL) return 1;
+
+    umount_fs(mountpoint);
+    mountpoint->flags &= ~FS_MOUNTPOINT;
+    mountpoint->ptr = NULL;
 
     return 0;
 }

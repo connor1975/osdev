@@ -29,6 +29,13 @@
 void syscall_install();
 void floppy_init();
 
+void fs_init(void* initrd){
+    int ramdisk = init_ramdisk(initrd);
+    devfs_init();
+    mount_internal(ramdisk,0,"/dev/ramdisk0","/","ext2");
+    task_open_stdio();
+}
+
 int main(bootinfo_t* bootinfo){
     irq_disable();
     pmm_init(bootinfo);
@@ -50,10 +57,8 @@ int main(bootinfo_t* bootinfo){
     floppy_init();
     init_pci_devices();
 
-    int ramdisk = init_ramdisk(phys_to_virt(bootinfo->initrd));
-    vfs_mount("/",ext2_mount_partition(ramdisk,0));
-    devfs_init();
-
+    fs_init(phys_to_virt(bootinfo->initrd));
+    
     syscall_install();
 
     verify_heap_integrity();

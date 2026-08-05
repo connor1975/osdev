@@ -68,6 +68,7 @@ void wait_queue_wake_all(struct wait_queue* q);
 void wait_queue_sleep(struct wait_queue* q);
 void initialise_wait_queue(struct wait_queue* q);
 
+void task_open_stdio();
 void timer_init();
 void clone_file_descriptors(task_t* new_task, task_t* old_task);
 int alloc_pid();

@@ -285,6 +285,21 @@ fs_node_t* ext2_finddir(fs_node_t *node, char *name){
     return NULL;
 }
 
+void ext2_umount(fs_node_t* node){
+    struct ext2_volume* volume = (void*)node->impl;
+    struct ext2_node_cache_entry* ptr = volume->node_cache;
+    struct ext2_node_cache_entry* next = volume->node_cache;
+    while(ptr != NULL){
+        next = ptr->next;
+        free(ptr->inode_data);
+        free(ptr->node);
+        free(ptr);
+        ptr = next;
+    }
+    free(volume->bgdt);
+    free(volume);
+}
+
 int ext2_probe(int disk, int partition){
     ext2_superblock_t* superblock = malloc(BYTES_PER_SECTOR * 2);
     read_partition_lba(disk,partition,2,2,superblock);
@@ -347,6 +362,7 @@ fs_node_t* ext2_mount_partition(int disk_no, int partition){
     root_node->length = 0;
     root_node->readdir = ext2_readdir;
     root_node->finddir = ext2_finddir;
+    root_node->umount = ext2_umount;
     root_node->inode = 2;
 
     volume->node_cache = malloc(sizeof(struct ext2_node_cache_entry));

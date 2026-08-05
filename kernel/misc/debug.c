@@ -44,7 +44,7 @@ uint64_t read_log(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buff
 
 void log_vfs_init(){
     strcpy(log_vfs.name,"klog");
-    log_vfs.mask = 0666;
+    log_vfs.mask = 0444;
     log_vfs.flags = FS_CHARDEVICE;
     log_vfs.read = read_log;
     dev_add_node(&log_vfs);

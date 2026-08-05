@@ -2,6 +2,7 @@
 #define FAT_H
 
 #include <stdint.h>
+#include <fs/vfs.h>
 
 struct fatbs_ext32{
 	uint32_t	table_size_32;

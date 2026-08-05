@@ -57,6 +57,7 @@ extern uint64_t sys_getpgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r
 extern uint64_t sys_setpgid(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_nanosleep(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_mount(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
+extern uint64_t sys_umount(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
 syscall syscall_table[] = {
     (syscall)sys_exit, // 0
@@ -109,6 +110,7 @@ syscall syscall_table[] = {
     (syscall)sys_setpgid, // 47
     (syscall)sys_nanosleep, // 48
     (syscall)sys_mount, // 49
+    (syscall)sys_umount, // 50
     0
 };
 

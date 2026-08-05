@@ -21,6 +21,7 @@ typedef int (*ioctl_type_t)(struct fs_node *, unsigned long request, void* argp)
 typedef struct dirent * (*readdir_type_t)(struct fs_node*,uint32_t);
 typedef struct fs_node * (*finddir_type_t)(struct fs_node*,char *name);
 typedef void (*truncate_type_t)(struct fs_node*,int length);
+typedef void (*umount_type_t)(struct fs_node*);
 
 typedef struct fs_node
 {
@@ -41,6 +42,7 @@ typedef struct fs_node
     create_file_type_t create_file;
     truncate_type_t truncate;
     ioctl_type_t ioctl;
+    umount_type_t umount;
     struct fs_node *ptr; // Used by mountpoints and symlinks.
 } fs_node_t;
 
@@ -61,6 +63,7 @@ uint64_t read_fs(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffe
 uint64_t write_fs(fs_node_t *node, uint64_t offset, uint64_t size, uint8_t *buffer);
 void open_fs(fs_node_t *node, uint8_t read, uint8_t write);
 void close_fs(fs_node_t *node);
+void umount_fs(fs_node_t *node);
 void truncate_fs(fs_node_t* node, int length);
 struct dirent *readdir_fs(fs_node_t *node, uint32_t index);
 fs_node_t *finddir_fs(fs_node_t *node, char *name);
@@ -70,6 +73,18 @@ fs_node_t* find_file(char* path);
 fs_node_t* find_file_dir(char* path);
 char* get_filename_from_path(char* path);
 
+int vfs_unmount(char* path);
+int vfs_mount(char* path,fs_node_t* local_root);
+
+fs_node_t* create_mounts_device();
+void mount_virtual(char* path, fs_node_t* node);
+int mount_internal(int disk, int partition, char* dev, char* path, char* fs);
+int mount_device(char* dev, char* path, char* fs);
+int umount(char* target);
+void unmount_device(char* device);
+
+int remount_devfs();
+void hook_mtab();
 void devfs_init();
 void dev_add_node(fs_node_t* node);
 
@@ -98,7 +113,6 @@ struct file_descriptor{
 };
 
 fs_node_t* kopen(char* path);
-int vfs_mount(char* path,fs_node_t* local_root);
 char* vfs_absolute_path(char* cwd, char* path);
 
 #define S_IFMT	 0170000	//bit mask for the file type bit fields

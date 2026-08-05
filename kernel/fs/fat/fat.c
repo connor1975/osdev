@@ -399,7 +399,7 @@ void fat_legacy_root_create_file(fat_mounted_volume_t* volume, char* filename){
     new_file->write = &fat_write;
     new_file->truncate = &fat_truncate;
     volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
-    volume->fileinfo[new_file->inode] = malloc(sizeof(struct fat_node_info));
+    volume->fileinfo[new_file->inode] = calloc(sizeof(struct fat_node_info),1);
 
     struct fat_node_info* fat_extras = volume->fileinfo[new_file->inode];
     fat_extras->starting_cluster = new_starting_cluster;
@@ -485,7 +485,7 @@ void fat_create_file(fs_node_t* directory, char* filename){
     new_file->write = &fat_write;
     new_file->truncate = &fat_truncate;
     volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
-    volume->fileinfo[new_file->inode] = malloc(sizeof(struct fat_node_info));
+    volume->fileinfo[new_file->inode] = calloc(sizeof(struct fat_node_info),1);
 
     struct fat_node_info* fat_extras = volume->fileinfo[new_file->inode];
     fat_extras->starting_cluster = new_starting_cluster;
@@ -700,7 +700,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             new_node->truncate = 0;
             new_node->ptr = 0;
             new_node->inode = volume->next_inode++;
-            void* fs_extra = malloc(sizeof(struct fat_node_info));
+            void* fs_extra = calloc(sizeof(struct fat_node_info),1);
             volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
             volume->fileinfo[new_node->inode] = fs_extra;
             uint32_t starting_cluster = dir[x].cluster_low | ((uint64_t)dir[x].cluster_high << 16);
@@ -719,7 +719,7 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
             new_node->close = 0;
             new_node->ptr = 0;
             new_node->inode = volume->next_inode++;
-            struct fat_node_info* fat_extras = malloc(sizeof(struct fat_node_info));
+            struct fat_node_info* fat_extras = calloc(sizeof(struct fat_node_info),1);
             fat_extras->starting_cluster = dir[x].cluster_low | ((uint64_t)dir[x].cluster_high << 16);
             fat_extras->children = 0;
             fat_extras->no_child = 0;
@@ -731,6 +731,26 @@ void populate_directory(fat_mounted_volume_t* volume,fs_node_t* node, fs_node_t*
         i++;
     }
     free(dir);
+}
+
+void fat_umount(fs_node_t* node){
+    fat_mounted_volume_t* volume = (fat_mounted_volume_t*)node->impl;
+    free(volume->bootsector);
+    free(volume->fat_buffer);
+    for(int i = 0; i < volume->next_inode; i++){
+        if(volume->fileinfo[i] != NULL){
+            struct fat_node_info* fatinfo = volume->fileinfo[i];
+            if(fatinfo->children != NULL) {
+                for(int x = 0; x < fatinfo->no_child; x++){
+                    free(fatinfo->children[x]);
+                }
+                free(fatinfo->children);
+            }
+            free(fatinfo);
+        }
+    }
+    free(volume->fileinfo);
+    free(volume);
 }
 
 int fat_probe(int disk, int partition){
@@ -802,11 +822,12 @@ fs_node_t* fat_mount_partition(int disk_no, int partition){
     vol_root->create_file = &fat_create_file;
     vol_root->readdir = &fat_readdir;
     vol_root->finddir = &fat_finddir;
+    vol_root->umount = fat_umount;
     vol_root->ptr = 0;
     vol_root->inode = volume->next_inode++;
     vol_root->impl = (uint64_t)volume;
-    volume->fileinfo = realloc(volume->fileinfo,volume->next_inode * sizeof(void*));
-    void* fileinfo = malloc(sizeof(struct fat_node_info));
+    volume->fileinfo = calloc(1,volume->next_inode * sizeof(void*));
+    void* fileinfo = calloc(sizeof(struct fat_node_info),1);
     volume->fileinfo[vol_root->inode] = fileinfo;
     volume->root = vol_root;
 

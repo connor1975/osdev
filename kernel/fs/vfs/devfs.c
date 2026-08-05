@@ -44,6 +44,16 @@ void dev_add_node(fs_node_t* node){
 void tty_init();
 void task_open_stdio();
 
+int remount_devfs(){
+    fs_node_t* dev = find_file("/dev");
+    if(dev == NULL){
+        kprintf(KPRINTF_ERROR, "trying to remount devfs but /dev does not exist!\n");
+        return 1;
+    }
+    mount_virtual("/dev",dev_node);
+    return 0;
+}
+
 void devfs_init(){
     dev_node = malloc(sizeof(fs_node_t));
     memset(dev_node,0,sizeof(fs_node_t));
@@ -59,7 +69,7 @@ void devfs_init(){
     dev_node->finddir = &dev_finddir;
     dev_node->ptr = 0;
     dev_node->impl = 0;
-    vfs_mount("/dev",dev_node);
+    //mount_virtual("/dev",dev_node);
 
     fs_node_t* this_node = malloc(sizeof(fs_node_t));
     memset(this_node,0,sizeof(fs_node_t));
@@ -78,6 +88,5 @@ void devfs_init(){
     zero_init();
     tty_fs_init();
     create_disk_devices();
-    task_open_stdio();
     log_vfs_init();
 }

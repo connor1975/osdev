@@ -36,6 +36,33 @@ void fs_init(void* initrd){
     task_open_stdio();
 }
 
+int run_init(char* path){
+    fs_node_t* file = kopen(path);
+    if(file == NULL)
+        return 1;
+
+    void* buffer = malloc(sizeof(Elf64_Ehdr));
+    read_fs(file,0,sizeof(Elf64_Ehdr),buffer);
+    if(verify_elf(buffer)){
+        free(buffer);
+        return 1;
+    }
+    free(buffer);
+    char** argv = gen_argv(path);
+    spawn_elf(file,argv,NULL);
+    return 0;
+}
+
+void spawn_init(){
+    if(run_init("/init") == 0)
+        return;
+    if(run_init("/sbin/init") == 0)
+        return;
+    if(run_init("/bin/init") == 0)
+        return;
+    panic("failed to spawn init!\n");
+}
+
 int main(bootinfo_t* bootinfo){
     irq_disable();
     pmm_init(bootinfo);
@@ -63,9 +90,7 @@ int main(bootinfo_t* bootinfo){
 
     verify_heap_integrity();
 
-    char** argv = gen_argv("/bin/sh");
-    fs_node_t* file=kopen("/bin/sh");
-    spawn_elf(file,argv,NULL);
+    spawn_init();
     
     while(1) asm volatile("hlt");
 }

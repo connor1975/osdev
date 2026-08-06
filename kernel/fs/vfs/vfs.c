@@ -23,7 +23,7 @@ int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
 }
 
 uint64_t read_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffer){
-    if(node == NULL) return;
+    if(node == NULL) return 0;
     node = resolve_node(node);
     if (node->read != 0)
         return node->read(node, offset, size, buffer);
@@ -32,7 +32,7 @@ uint64_t read_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffe
 }
 
 uint64_t write_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffer){
-    if(node == NULL) return;
+    if(node == NULL) return 0;
     node = resolve_node(node);
     if (node->write != 0)
         return node->write(node, offset, size, buffer);

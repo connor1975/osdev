@@ -9,12 +9,15 @@
 #include <debug.h>
 #include <stdio.h>
 #include <multitasking.h>
+#include <time.h>
 
 struct mount{
     fs_node_t* node;
     char path[256];
     char device[256];
     char fs[32];
+    char options[32];
+    char time[32];
     struct mount* next;
 };
 
@@ -32,11 +35,11 @@ uint64_t read_mounts(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* b
     return size;
 }
 
-void rebuild_mounts_vfs(){
+void rebuild_mounts_vfs(){    
     int len = 0;
     struct mount* current = mounts;
     while(current != NULL){
-        len+=strlen(current->path)+strlen(current->device)+strlen(current->fs)+3;
+        len+=strlen(current->path)+strlen(current->device)+strlen(current->fs)+strlen(current->options)+strlen(current->time)+5;
         current = current->next;
     }
     mounts_vfs_buffer_len = len;
@@ -52,6 +55,12 @@ void rebuild_mounts_vfs(){
         ((char*)mounts_vfs_buffer)[offset++] = ' ';
         memcpy((char*)mounts_vfs_buffer+offset,current->fs,strlen(current->fs));
         offset+=strlen(current->fs);
+        ((char*)mounts_vfs_buffer)[offset++] = ' ';
+        memcpy((char*)mounts_vfs_buffer+offset,current->options,strlen(current->options));
+        offset+=strlen(current->options);
+        ((char*)mounts_vfs_buffer)[offset++] = ' ';
+        memcpy((char*)mounts_vfs_buffer+offset,current->time,strlen(current->time));
+        offset+=strlen(current->time);        
         ((char*)mounts_vfs_buffer)[offset++] = '\n';
         current = current->next;
     }
@@ -59,21 +68,7 @@ void rebuild_mounts_vfs(){
         mounts_vfs->length = mounts_vfs_buffer_len;
 }
 
-void hook_mtab(){
-    mounts_vfs = find_file("/etc/mtab");
-    if(mounts_vfs == NULL){
-        kprintf(KPRINTF_CRITICAL,"kernel cannot find /etc/mtab!\n");
-        return;
-    }
-
-    mounts_vfs->mask = 0444;
-    mounts_vfs->read = read_mounts;
-    mounts_vfs->write = 0;
-    mounts_vfs->length = 0;
-    rebuild_mounts_vfs();
-}
-
-void register_mount(fs_node_t* node, char* device, char* local_path, char* fs){
+void register_mount(fs_node_t* node, char* device, char* local_path, char* fs,char* options){
     char* path = vfs_absolute_path(current_task->cwd,local_path);
     struct mount* current = mounts;
     if(current == NULL){
@@ -102,9 +97,27 @@ void register_mount(fs_node_t* node, char* device, char* local_path, char* fs){
     else
         strcpy(current->device,device);
 
+    strcpy(current->options, options);
+    sprintf(current->time,"%d",get_unix_time());
+
     kprintf(KPRINTF_INFO,"mount: mounting %s to path: %s of type %s\n",current->device,current->path,current->fs);
     rebuild_mounts_vfs();
     free(path);
+}
+
+void hook_mntttab(){
+    mounts_vfs = calloc(1,sizeof(fs_node_t));
+
+    mounts_vfs->mask = 0444;
+    mounts_vfs->read = read_mounts;
+    mounts_vfs->write = 0;
+    mounts_vfs->length = 0;
+    strcpy(mounts_vfs->name,"mnttab");
+
+    vfs_mount("/etc/mnttab",mounts_vfs);
+    register_mount(mounts_vfs,"/etc/mnttab","/etc/mnttab","mntfs","ro");
+
+    rebuild_mounts_vfs();
 }
 
 void mount_vfs_remove_single(char* local_path){
@@ -140,7 +153,7 @@ int umount(char* target){
 
 void mount_virtual(char* path, fs_node_t* node){
     vfs_mount(path,node);
-    register_mount(node,NULL,path,NULL);
+    register_mount(node,NULL,path,NULL,"rw");
 }
 
 int mount_internal(int disk, int partition, char* dev, char* path, char* fs){
@@ -149,7 +162,7 @@ int mount_internal(int disk, int partition, char* dev, char* path, char* fs){
         if(root == NULL)
             return EINVAL;
         vfs_mount(path,root);
-        register_mount(root,dev,path,fs);
+        register_mount(root,dev,path,fs,"ro");
         return 0;
     }
     if(strcmp(fs,"fat") == 0){
@@ -157,7 +170,7 @@ int mount_internal(int disk, int partition, char* dev, char* path, char* fs){
         if(root == NULL)
             return EINVAL;
         vfs_mount(path,root);
-        register_mount(root,dev,path,fs);
+        register_mount(root,dev,path,fs,"rw");
         return 0;
     }
     return EINVAL;

@@ -15,6 +15,7 @@ fs_node_t* resolve_node(fs_node_t* node){
 
 int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
     if(node == NULL) return -1;
+    node = resolve_node(node);
     if(node->ioctl != 0)
         return node->ioctl(node,request,argp);
     else
@@ -22,7 +23,8 @@ int ioctl_fs(fs_node_t *node, unsigned long request, void * argp){
 }
 
 uint64_t read_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffer){
-    if(node == NULL) return 0;
+    if(node == NULL) return;
+    node = resolve_node(node);
     if (node->read != 0)
         return node->read(node, offset, size, buffer);
     else
@@ -30,7 +32,8 @@ uint64_t read_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffe
 }
 
 uint64_t write_fs(fs_node_t* node, uint64_t offset, uint64_t size, uint8_t* buffer){
-    if(node == NULL) return 0;
+    if(node == NULL) return;
+    node = resolve_node(node);
     if (node->write != 0)
         return node->write(node, offset, size, buffer);
     else
@@ -162,7 +165,7 @@ int vfs_mount(char* path,fs_node_t* local_root){
 
     if(memcmp(path,"/",2) == 0){
         fs_root = local_root;
-        hook_mtab();
+        hook_mntttab();
         remount_devfs();
         return 0;
     }

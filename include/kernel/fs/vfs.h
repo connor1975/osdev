@@ -84,7 +84,7 @@ int umount(char* target);
 void unmount_device(char* device);
 
 int remount_devfs();
-void hook_mtab();
+void hook_mntttab();
 void devfs_init();
 void dev_add_node(fs_node_t* node);
 

@@ -112,6 +112,8 @@ void hook_mntttab(){
     mounts_vfs->read = read_mounts;
     mounts_vfs->write = 0;
     mounts_vfs->length = 0;
+    mounts_vfs->flags = FS_FILE;
+    mounts_vfs->inode = 1;
     strcpy(mounts_vfs->name,"mnttab");
 
     vfs_mount("/etc/mnttab",mounts_vfs);

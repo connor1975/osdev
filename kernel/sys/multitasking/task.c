@@ -132,13 +132,13 @@ int task_fork(){
     new_task->brk_next_page = current_task->brk_next_page;
     
     memset((void*)&new_task->context,0,sizeof(struct interrupt_frame));
-    memcpy((void*)&new_task->context,(void*)syscall_context,sizeof(struct interrupt_frame));
+    memcpy((void*)&new_task->context,(void*)current_task->syscall_context,sizeof(struct interrupt_frame));
     new_task->rsp0 = (uint64_t)phys_to_virt(allocate_frames(DEFAULT_STACK_SIZE_PAGES)) + (4096 * DEFAULT_STACK_SIZE_PAGES); // setup kernel stack
-    new_task->context.cs = syscall_context->cs;
-    new_task->context.ss = syscall_context->ss;
+    new_task->context.cs = current_task->syscall_context->cs;
+    new_task->context.ss = current_task->syscall_context->ss;
     new_task->context.rflags = 0x200; // Interrupt enable
-    new_task->context.rsp = syscall_context->rsp;
-    new_task->context.rip = syscall_context->rip;
+    new_task->context.rsp = current_task->syscall_context->rsp;
+    new_task->context.rip = current_task->syscall_context->rip;
     new_task->context.rax = 0;
     new_task->pgid = current_task->pgid;
 

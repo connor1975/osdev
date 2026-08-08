@@ -55,7 +55,7 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
     int ret = exec_elf(task,buffer,kargv,kenvp);
     if(ret < 0) return ret;
 
-    memcpy((void*)syscall_context,(void*)&task->context,sizeof(struct interrupt_frame));
+    memcpy((void*)current_task->syscall_context,(void*)&task->context,sizeof(struct interrupt_frame));
     switch_pml4((void*)task->cr3);
     tss_set_kernel_stack((void*)task->rsp0);
 
@@ -148,5 +148,5 @@ uint64_t sys_set_tid_address(int* tidptr){
 }
 
 void sys_sched_yield(){
-    schedule((struct interrupt_frame*)syscall_context);
+    schedule((struct interrupt_frame*)current_task->syscall_context);
 }

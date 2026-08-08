@@ -29,6 +29,7 @@ struct signal_state {
 
 typedef struct task{
     struct interrupt_frame context;
+    struct interrupt_frame* syscall_context;
     __attribute__((aligned(16))) uint8_t fxsave_region[512];
     struct task* next;
     int user;
@@ -109,6 +110,5 @@ char** gen_argv(char* string);
 void sleep(uint64_t ms);
 
 extern volatile task_t* current_task;
-extern volatile struct interrupt_frame* syscall_context;
 
 #endif

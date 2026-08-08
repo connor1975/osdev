@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <multitasking.h>
 
 typedef uint64_t (*syscall)(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
@@ -116,10 +117,8 @@ syscall syscall_table[] = {
 
 int num_syscalls;
 
-volatile struct interrupt_frame* syscall_context = NULL;
-
 void syscall_handler(struct interrupt_frame* regs){
-    syscall_context = regs;
+    current_task->syscall_context = regs;
     if(regs->rax < num_syscalls){
         regs->rax = syscall_table[regs->rax](regs->rdi,regs->rsi,regs->rdx,regs->r10,regs->r8,regs->r9);
         return;

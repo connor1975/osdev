@@ -36,7 +36,7 @@ uint64_t sys_sigprocmask(int how, const sigset_t* set, sigset_t* oldset){
 
 uint64_t sys_sigreturn(){
     memcpy(&((task_t*)current_task)->context,&((task_t*)current_task)->saved_signal_context,sizeof(struct interrupt_frame));
-    memcpy((struct interrupt_frame*)syscall_context,&((task_t*)current_task)->context,sizeof(struct interrupt_frame));
+    memcpy((struct interrupt_frame*)current_task->syscall_context,&((task_t*)current_task)->context,sizeof(struct interrupt_frame));
     current_task->signal_interrupted = 0;
     return 0;
 }

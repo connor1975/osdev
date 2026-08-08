@@ -106,6 +106,11 @@ void schedule(struct interrupt_frame* regs){
     if(current_task->state == TASK_RUNNING) current_task->state = TASK_READY; 
 
     get_next_ready_task();
+    int next_sig = get_next_pending_signal((task_t*)current_task);
+    if(next_sig){
+        if(deliver_signal((task_t*)current_task,next_sig))
+            return schedule(regs);
+    }
 
     current_task->state = TASK_RUNNING;
     memcpy((void*)regs,(void*)&current_task->context,sizeof(struct interrupt_frame));

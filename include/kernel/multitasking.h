@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <fs/vfs.h>
 #include <spinlock.h>
+#include <sys/signal.h>
 
 #define USER_HEAP_START (void*)0x200000000 // 8 GB into memory
 #define USER_MMAP_START (void*)0x700000000000
@@ -20,6 +21,12 @@ struct wait_queue{
     struct wait_queue_entry* tail;
 };
 
+struct signal_state {
+    uint64_t pending;
+    uint64_t masked;
+    struct sigaction handlers[NSIG];
+};
+
 typedef struct task{
     struct interrupt_frame context;
     __attribute__((aligned(16))) uint8_t fxsave_region[512];
@@ -29,7 +36,7 @@ typedef struct task{
     
     int id;
     int pgid;
-
+    
     uint64_t rsp0;
     void* brk_start;
     void* brk;
@@ -40,15 +47,23 @@ typedef struct task{
     struct file_descriptor* open_files[MAX_OPEN_FILES];
     int exit_code;
     void* fs_base;
-
+    
     struct wait_queue child_event_waiters;
     struct wait_queue exit_waiters;  
+    
+    struct interrupt_frame saved_signal_context;
+    struct signal_state signal_state;
+    int signal_interrupted;
 
     int wait_handled;
     int child_count;
     struct task** children;
     struct task* parent;
 } task_t;
+
+int send_signal(int pid, int sig);
+int get_next_pending_signal(task_t* task);
+int deliver_signal(task_t* task, int signum);
 
 enum TASK_STATE{
     TASK_DEAD,
@@ -68,6 +83,7 @@ void wait_queue_wake_all(struct wait_queue* q);
 void wait_queue_sleep(struct wait_queue* q);
 void initialise_wait_queue(struct wait_queue* q);
 
+void push_to_stack(task_t* task, void* buffer, uint64_t length);
 void task_open_stdio();
 void timer_init();
 void clone_file_descriptors(task_t* new_task, task_t* old_task);

@@ -10,8 +10,18 @@
 #include <fs/vfs.h>
 #include <errno.h>
 #include <debug.h>
+#include <sys/signal.h>
 
 extern task_t* task_list;
+
+void task_signal_init(task_t* task){
+    task->signal_state.pending = 0;
+    task->signal_state.masked = 0;
+    memset(&task->signal_state.handlers,0,sizeof(struct sigaction) * NSIG);
+    for(int i = 0; i < NSIG; i++){
+        task->signal_state.handlers[i].sa_handler = SIG_DFL;
+    }
+}
 
 int get_task_state(int pid){
     task_t* task = find_task(pid);
@@ -39,6 +49,8 @@ task_t* task_create_child(){
     new_task->state = TASK_STARTING;
     memset(new_task->fxsave_region,0,512);
     memset((void*)&new_task->context,0,sizeof(struct interrupt_frame));
+
+    task_signal_init(new_task);
 
     new_task->parent = (task_t*)current_task;
     current_task->children = realloc(current_task->children,(current_task->child_count + 1) * sizeof(task_t*));
@@ -154,33 +166,6 @@ void kill_task(int pid, int exit_code){
 
 void task_exit(int exit_code){
     kill_task(current_task->id,exit_code);
-}
-
-int kill(int pid, int sig){
-    if(pid == 0){
-        task_t* task = task_list;
-        while(task != NULL){
-            if(task->pgid == current_task->pgid && task->id != current_task->id){
-                kill_task(task->id,sig);
-            }
-            task = task->next;
-        }
-        return 0;
-    }
-    if(pid < 0){
-        task_t* task = task_list;
-        while(task != NULL){
-            if(task->pgid == -pid){
-                kill_task(task->id,sig);
-            }
-            task = task->next;
-        }
-        return 0;
-    }
-    task_t* task = find_task(pid);
-    if(task == NULL) return -ESRCH;
-    kill_task(task->id,sig);
-    return 0;
 }
 
 void task_open_stdio(){

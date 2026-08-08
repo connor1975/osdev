@@ -47,7 +47,7 @@ uint64_t sys_open(char* path, int flags){
     if(flags & O_CREAT && find_file(path) == NULL){
         create_file_fs(find_file_dir(path),get_filename_from_path(path));
     }
-    return task_open_file(find_file(path),(task_t*)current_task,flags);
+    return task_open_file(resolve_node(find_file(path)),(task_t*)current_task,flags);
 }
 
 uint64_t sys_close(int fd){
@@ -55,7 +55,7 @@ uint64_t sys_close(int fd){
 }
 
 uint64_t sys_truncate(const char* path, uint64_t length){
-    fs_node_t* file = find_file((char*)path);
+    fs_node_t* file = resolve_node(find_file((char*)path));
     if(file == NULL) return -ENOENT;
     truncate_fs(file,length);
     return 0;
@@ -178,7 +178,7 @@ uint64_t stat_internal(fs_node_t* node,struct stat* stat){
 }
 
 uint64_t sys_stat(char* path, void* buf){
-    fs_node_t* node = find_file(path);
+    fs_node_t* node = resolve_node(find_file(path));
     if(node == NULL) return -ENOENT;
     struct stat* stat = buf;
     return stat_internal(node,stat);
@@ -266,7 +266,7 @@ uint64_t sys_dup2(int oldfd, int newfd){
 }
 
 uint64_t sys_access(const char *path, int amode){
-    fs_node_t* file = find_file((char*)path);
+    fs_node_t* file = resolve_node(find_file((char*)path));
     if(file == NULL) return -ENOENT;
     return 0;
 }

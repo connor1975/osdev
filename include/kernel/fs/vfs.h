@@ -72,6 +72,7 @@ int ioctl_fs(fs_node_t *node, unsigned long request, void * argp);
 fs_node_t* find_file(char* path);
 fs_node_t* find_file_dir(char* path);
 char* get_filename_from_path(char* path);
+fs_node_t* resolve_node(fs_node_t* node);
 
 int vfs_unmount(char* path);
 int vfs_mount(char* path,fs_node_t* local_root);

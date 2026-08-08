@@ -9,10 +9,13 @@
 #include <disk.h>
 #include <debug.h>
 
-fs_node_t* dev_node;
+#define DEV_STARTING_INODE 2
 
-fs_node_t** devfs_entries = NULL;
-int devfs_entry_count = 0;
+static fs_node_t* dev_node;
+
+static fs_node_t** devfs_entries = NULL;
+static int devfs_entry_count = 0;
+static int dev_next_ino = DEV_STARTING_INODE;
 
 static struct dirent dirent;
 
@@ -37,7 +40,7 @@ void dev_add_node(fs_node_t* node){
     int index = devfs_entry_count;
     devfs_entry_count++;
     devfs_entries = realloc(devfs_entries,sizeof(fs_node_t*) * devfs_entry_count);
-    node->inode = devfs_entry_count;
+    node->inode = dev_next_ino++;
     devfs_entries[index] = node;
 }
 
@@ -58,7 +61,9 @@ void devfs_init(){
     dev_node = malloc(sizeof(fs_node_t));
     memset(dev_node,0,sizeof(fs_node_t));
     strcpy(dev_node->name,"devfs");
-    dev_node->mask = dev_node->uid = dev_node->gid = dev_node->inode = dev_node->length = 0;
+    dev_node->uid = dev_node->gid = dev_node->length = 0;
+    dev_node->inode = DEV_STARTING_INODE - 1;
+    dev_node->mask = 0777;
     dev_node->flags = FS_DIRECTORY;
     dev_node->read = 0;
     dev_node->write = 0;

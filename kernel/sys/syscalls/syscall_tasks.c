@@ -94,6 +94,10 @@ uint64_t sys_get_pid(){
     return current_task->id;
 }
 
+uint64_t sys_getppid(){
+    return current_task->parent->id;
+}
+
 uint64_t sys_getpgid(int pid){
     if(pid == 0){
         return current_task->pgid;

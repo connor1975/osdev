@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <multitasking.h>
+#include <debug.h>
 
 typedef uint64_t (*syscall)(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 
@@ -22,8 +23,6 @@ extern uint64_t sys_getcwd(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r1
 extern uint64_t sys_stat(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_fstat(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_chdir(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
-extern uint64_t sys_mmap(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
-extern uint64_t sys_munmap(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_wait4(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_prctl(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
 extern uint64_t sys_writev(uint64_t rdi, uint64_t rsi, uint64_t rdx, uint64_t r10, uint64_t  r8, uint64_t r9);
@@ -77,8 +76,8 @@ syscall syscall_table[] = {
     (syscall)sys_stat, // 12
     (syscall)sys_fstat, // 13
     (syscall)sys_chdir, // 14
-    (syscall)sys_mmap, // 15
-    (syscall)sys_munmap, // 16
+    (syscall)NULL, // 15
+    (syscall)NULL, // 16
     (syscall)sys_sched_yield, // 17
     (syscall)sys_wait4, // 18
     (syscall)sys_prctl, // 19
@@ -114,19 +113,18 @@ syscall syscall_table[] = {
     (syscall)sys_mount, // 49
     (syscall)sys_umount, // 50
     (syscall)sys_getppid, //51
-    0
 };
 
-int num_syscalls;
+#define SYSCALL_COUNT (sizeof(syscall_table) / sizeof(syscall))
 
 void syscall_handler(struct interrupt_frame* regs){
     current_task->syscall_context = regs;
-    if(regs->rax < num_syscalls){
+    if(regs->rax < SYSCALL_COUNT && syscall_table[regs->rax] != NULL){
         regs->rax = syscall_table[regs->rax](regs->rdi,regs->rsi,regs->rdx,regs->r10,regs->r8,regs->r9);
         return;
     }
     else{
-        printf("Invalid Syscall number %llu",regs->rax);
+        kprintf(KPRINTF_ERROR,"Invalid Syscall number %llu called by pid %d\n",regs->rax,current_task->id);
         regs->rax = -ENOSYS;
         return;
     }
@@ -135,10 +133,5 @@ void syscall_handler(struct interrupt_frame* regs){
 extern void syscall_entry();
 
 void syscall_install(){
-    int i = 0;
-    while(syscall_table[i] != (void*)0){
-        i++;
-    }
-    num_syscalls = i;
     register_isr_handler(0x80,syscall_handler);
 }

@@ -59,10 +59,15 @@ uint64_t sys_execve(char* pathname, char** argv, char** envp){
     switch_pml4((void*)task->cr3);
     tss_set_kernel_stack((void*)task->rsp0);
 
+    reset_signal_handlers(task);
+
     free_args(kargv);
     free_args(kenvp);
     return 0;
 }
+
+#define WNOHANG 1
+#define WUNTRACED 2
 
 uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
     if(pid > 0) {
@@ -70,6 +75,8 @@ uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
         if(task == NULL) return -ESRCH;
 
         while(task->state != TASK_DEAD){
+            if(options & WNOHANG)
+                return 0;
             wait_queue_sleep(&task->exit_waiters);
         }
         
@@ -84,6 +91,9 @@ uint64_t sys_wait4(int64_t pid, int * status, int options, void * rusage){
                     if(status != NULL) *status = (task->exit_code & 0xff) << 8;
                     return current_task->children[i]->id;
                 }
+            }
+            if(options & WNOHANG){
+                return 0;
             }
             wait_queue_sleep(&((task_t*)current_task)->child_event_waiters);
         }

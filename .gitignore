@@ -6,3 +6,4 @@ newlib
 sysroot/*
 binutils
 gcc
+dash*

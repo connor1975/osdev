@@ -93,8 +93,13 @@ int send_signal(int pid, int sig){
         return 0;
 
     if(sig < NSIG && sig > 0){
-        task->signal_state.pending |= (1ULL << sig);
-        task->state = TASK_READY;
+        if(task->signal_state.handlers[sig].sa_handler == SIG_DFL){
+            task->signal_interrupted = 1;
+            signal_perform_default(task,sig);
+        }else{
+            task->signal_state.pending |= (1ULL << sig);
+            if(task->state != TASK_DEAD) task->state = TASK_READY;
+        }
         return 0;
     }
     else{
@@ -126,4 +131,13 @@ int kill(int pid, int sig){
     task_t* task = find_task(pid);
     if(task == NULL) return -ESRCH;
     return send_signal(task->id,sig);
+}
+
+void reset_signal_handlers(task_t* task){
+    for(int i = 0; i < NSIG; i++){
+        if(task->signal_state.handlers[i].sa_handler != SIG_DFL && task->signal_state.handlers[i].sa_handler != SIG_IGN){
+            task->signal_state.handlers[i].sa_handler = SIG_DFL;
+        }
+    }
+    task->signal_state.pending = 0;
 }

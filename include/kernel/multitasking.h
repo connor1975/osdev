@@ -65,6 +65,7 @@ typedef struct task{
 int send_signal(int pid, int sig);
 int get_next_pending_signal(task_t* task);
 int deliver_signal(task_t* task, int signum);
+void reset_signal_handlers(task_t* task);
 
 enum TASK_STATE{
     TASK_DEAD,

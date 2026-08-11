@@ -142,6 +142,9 @@ int task_fork(){
     new_task->context.rax = 0;
     new_task->pgid = current_task->pgid;
 
+    memcpy(&new_task->signal_state, &((task_t*)current_task)->signal_state, sizeof(struct signal_state));
+    new_task->signal_state.pending = 0;
+
     void* newpd = allocate_new_pd();
     clone_pd(phys_to_virt(newpd));
     new_task->cr3 = (uint64_t)newpd;
@@ -161,6 +164,8 @@ void kill_task(int pid, int exit_code){
     }
     wait_queue_wake_all(&task->exit_waiters);
     wait_queue_wake_all(&task->parent->child_event_waiters);
+
+    send_signal(task->parent->id,SIGCHLD);
     if(current_task->id == pid) yield();
 }
 

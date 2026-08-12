@@ -2,8 +2,9 @@
 .vscode/settings.json
 bin/*
 test
-newlib
 sysroot/*
 binutils
 gcc
 dash*
+newlib/newlib-cygwin
+newlib/build-newlib

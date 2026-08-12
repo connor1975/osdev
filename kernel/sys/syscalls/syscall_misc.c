@@ -56,10 +56,10 @@ uint64_t sys_pipe(int* fildes){
     return 0;
 }
 
-char sysname[] = "ConnorOS";
-char nodename[] = "connoros";
-char release[] = "0.0.1";
-char version[] = "ConnorOS Kernel Version 0.0.1";
+char sysname[] = "Meddle";
+char nodename[] = "meddleos";
+char release[] = "0.1.0";
+char version[] = "Meddle-0.1.0-x86_64";
 char machine[] = "x86_64";
 
 struct old_utsname{

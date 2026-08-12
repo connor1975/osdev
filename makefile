@@ -14,7 +14,7 @@ bootimg:
 	sudo dd if=$(BUILD_DIR)/bootloader/boot.bin of=$(BUILD_DIR)/os.img seek=512 conv=notrunc bs=1
 
 	sudo losetup -o 1048576 --sizelimit 503316480 $(LOOP_DEVICE) $(BUILD_DIR)/os.img
-	sudo mkfs.fat -F 32 $(BUILD_DIR)/os.img --offset 2048 -h 2048 -n "CONNOROS" -s 4
+	sudo mkfs.fat -F 32 $(BUILD_DIR)/os.img --offset 2048 -h 2048 -n "MEDDLEOS" -s 4
 	sudo mmd -i $(LOOP_DEVICE) ::/boot
 	sudo mmd -i $(LOOP_DEVICE) ::/EFI
 	sudo mmd -i $(LOOP_DEVICE) ::/EFI/BOOT
